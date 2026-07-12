@@ -5,107 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>白馬キャンプ賛美選曲（コーラス）連絡フォーム</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f3f2f1;
-            margin: 0;
-            padding: 20px;
-            color: #323130;
-        }
-        .form-container {
-            max-width: 680px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border-top: 8px solid #0078d4;
-        }
-        .form-header {
-            padding: 30px;
-            background-color: #ffffff;
-            border-bottom: 1px solid #edebe9;
-        }
-        .form-header h1 {
-            margin: 0 0 15px 0;
-            font-size: 24px;
-            color: #323130;
-        }
-        .form-header p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #605e5c;
-            line-height: 1.5;
-        }
-        .section {
-            padding: 30px;
-            border-bottom: 1px solid #edebe9;
-        }
-        .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #0078d4;
-        }
-        .form-group {
-            margin-bottom: 25px;
-        }
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        .required::after {
-            content: " *";
-            color: #a4262c;
-        }
-        .form-control, select, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #a19f9d;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-        .form-control:focus, select:focus, textarea:focus {
-            border-color: #0078d4;
-            outline: none;
-        }
-        .radio-group, .checkbox-group {
-            margin-top: 8px;
-        }
-        .radio-item {
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-        .radio-item input {
-            margin-right: 10px;
-        }
-        .footnote {
-            font-size: 12px;
-            color: #a4262c;
-            margin-top: 5px;
-            font-style: italic;
-        }
-        .btn-submit {
-            background-color: #0078d4;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-        }
-        .btn-submit:hover {
-            background-color: #106ebe;
-        }
-        .dynamic-section {
-            display: none;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f3f2f1; margin: 0; padding: 20px; color: #323130; }
+        .form-container { max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); overflow: hidden; border-top: 8px solid #0078d4; }
+        .form-header { padding: 30px; background-color: #ffffff; border-bottom: 1px solid #edebe9; }
+        .form-header h1 { margin: 0 0 15px 0; font-size: 24px; color: #323130; }
+        .form-header p { margin: 5px 0; font-size: 14px; color: #605e5c; line-height: 1.5; }
+        .section { padding: 30px; border-bottom: 1px solid #edebe9; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #0078d4; }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        .required::after { content: " *"; color: #a4262c; }
+        .form-control, select, textarea { width: 100%; padding: 10px; border: 1px solid #a19f9d; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        .song-filter-group { display: flex; gap: 10px; margin-bottom: 8px; }
+        .song-filter-group select { flex: 1; }
+        .radio-group { margin-top: 8px; }
+        .radio-item { margin-bottom: 10px; display: flex; align-items: center; }
+        .radio-item input { margin-right: 10px; }
+        .footnote { font-size: 13px; color: #a4262c; margin-top: 6px; font-weight: bold; }
+        .btn-submit { background-color: #0078d4; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
+        .btn-submit:hover { background-color: #106ebe; }
+        .hidden { display: none; }
+        .loading-msg { color: #0078d4; font-size: 14px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -125,16 +45,14 @@
             <div class="form-group">
                 <label class="required">1. 奉仕者名</label>
                 <select id="singerName" name="singerName" required>
-                    <option value="">選択してください</option>
-                    <option value="placeholder1">奉仕者A（後ほど一覧に差し替え）</option>
-                    <option value="placeholder2">奉仕者B（後ほど一覧に差し替え）</option>
+                    <option value="">読み込み中...</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label class="required">2. 連絡内容</label>
                 <div class="radio-group">
-                    <div class="radio-item"><input type="radio" name="contactType" value="新規" required> 新規</div>
+                    <div class="radio-item"><input type="radio" name="contactType" value="新規" required checked> 新規</div>
                     <div class="radio-item"><input type="radio" name="contactType" value="変更"> 変更（変更の場合は、全曲選択しなおしてください）</div>
                 </div>
             </div>
@@ -163,35 +81,71 @@
                 </div>
             </div>
 
-            <div class="form-group">
+            <div id="groupNameArea" class="form-group hidden">
                 <label class="required">5. グループ名</label>
-                <input type="text" class="form-control" name="groupName" required placeholder="回答を入力してください">
+                <input type="text" id="groupName" class="form-control" name="groupName" placeholder="回答を入力してください">
             </div>
 
-            <div class="form-group">
+            <div id="orchestraArea" class="form-group hidden">
                 <label class="required">6. 選曲（オケ有無）</label>
-                <textarea name="orchestraDetails" rows="3" required placeholder="特別賛美は5分程度でお願いいたします。"></textarea>
+                <textarea id="orchestraDetails" name="orchestraDetails" rows="3" placeholder="特別賛美は5分程度でお願いいたします。"></textarea>
             </div>
         </div>
 
-        <div class="section">
-            <div class="section-title">セクション 2: 選曲</div>
+        <div id="selectionSection" class="section hidden">
+            <div class="section-title">セクション 2: 選曲フロー</div>
 
-            <div class="form-group">
-                <label class="required">7. 選曲(1曲目)</label>
-                <select class="song-select" name="song1" required>
-                    <option value="">曲を選択してください（全曲データベースより取得）</option>
-                </select>
-            </div>
-
-            <div id="additionalSongs">
+            <div id="dynamicFlowArea">
+                <div id="step_song1" class="form-group hidden">
+                    <label class="required">7. 選曲(1曲目)</label>
+                    <div class="song-filter-group">
+                        <select id="book_filter1" onchange="filterSongs(1)"><option value="">歌集を選択</option></select>
+                    </div>
+                    <select id="song1" name="song1"><option value="">まず歌集を選択してください</option></select>
                 </div>
 
-            <div id="prophecySongSection" class="form-group" style="display:none;">
-                <label class="required">預言後の曲</label>
-                <select id="prophecySong" name="prophecySong">
-                    </select>
-                <div id="prophecyFootnote" class="footnote" style="display:none;">※後半賛美の預言後は「God is working for my good」に固定されています。</div>
+                <div id="step_branch1" class="form-group hidden">
+                    <label class="required">8. 次曲選曲項目</label>
+                    <div class="radio-group">
+                        <div class="radio-item"><input type="radio" name="branch1" value="next"> 2曲目選曲へ</div>
+                        <div class="radio-item"><input type="radio" name="branch1" value="prophecy"> 「預言後の曲」へ</div>
+                        <div class="radio-item"><input type="radio" name="branch1" value="end"> 選曲終了</div>
+                    </div>
+                </div>
+
+                <div id="step_song2" class="form-group hidden">
+                    <label class="required">9. 選曲(2曲目)</label>
+                    <div class="song-filter-group">
+                        <select id="book_filter2" onchange="filterSongs(2)"><option value="">歌集を選択</option></select>
+                    </div>
+                    <select id="song2" name="song2"><option value="">まず歌集を選択してください</option></select>
+                </div>
+
+                <div id="step_branch2" class="form-group hidden">
+                    <label class="required">10. 次曲選曲項目</label>
+                    <div class="radio-group">
+                        <div class="radio-item"><input type="radio" name="branch2" value="next"> 3曲目選曲へ</div>
+                        <div class="radio-item"><input type="radio" name="branch2" value="prophecy"> 「預言後の曲」へ</div>
+                        <div class="radio-item"><input type="radio" name="branch2" value="end"> 選曲終了</div>
+                    </div>
+                </div>
+
+                <div id="step_song3" class="form-group hidden">
+                    <label class="required" id="song3Label">11. 選曲(3曲目)</label>
+                    <div id="filter_area3" class="song-filter-group">
+                        <select id="book_filter3" onchange="filterSongs(3)"><option value="">歌集を選択</option></select>
+                    </div>
+                    <select id="song3" name="song3"><option value="">選択してください</option></select>
+                    <div id="prophecyFootnote" class="footnote hidden">※後半賛美の預言後は固定になります。</div>
+                </div>
+
+                <div id="specialSongArea" class="form-group hidden">
+                    <label class="required">選曲（特別賛美の曲名）</label>
+                    <div class="song-filter-group">
+                        <select id="book_filterSpecial" onchange="filterSongs('Special')"><option value="">歌集を選択</option></select>
+                    </div>
+                    <select id="specialSong" name="specialSong"><option value="">まず歌集を選択してください</option></select>
+                </div>
             </div>
         </div>
 
@@ -200,49 +154,243 @@
                 <label>コーラス・備考欄</label>
                 <textarea name="remarks" rows="3" placeholder="回答を入力してください"></textarea>
             </div>
-            <button type="submit" class="btn-submit">送信</button>
+            <button type="submit" class="btn-submit" id="submitBtn">送信</button>
+            <span id="loadingMsg" class="loading-msg hidden">データを送信中...</span>
         </div>
     </form>
 </div>
 
 <script>
-    // 担当の賛美切り替えイベントの監視
-    document.querySelectorAll('input[name="worshipType"]').forEach(elem => {
-        elem.addEventListener('change', function(e) {
-            const type = e.target.value;
-            handleWorshipTypeChange(type);
-        });
+    // 修正済みの設定項目
+    const CONFIG = {
+        HAKUBA_SS_ID: '1f50NLanz3IEriqOY3FKMo2pMYOJnESS4', // 白馬選曲一覧
+        BOOK_SS_ID: '1jyNAb3GM9UhXj2hNfB36WbevJ24avNIQ',   // 歌集一覧表
+        GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwL-UmKIU8fQUFdMnUJAQLK__ID8wQVb6tE6A5hxDhRt4SNrv4oHZ5kJ921rBoTZoAobg/exec'        // ★ここにGASのウェブアプリURLを貼り付けてください
+    };
+
+    let masterData = { singers: [], allSongs: [], earlyProphecySongs: [], bookedSongs: [], bookCategories: [] };
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        await Promise.all([loadSingers(), loadAllSongs(), loadEarlyProphecySongs()]);
+        initEventListeners();
     });
 
-    function handleWorshipTypeChange(type) {
-        const prophecySection = document.getElementById('prophecySongSection');
-        const prophecySelect = document.getElementById('prophecySong');
-        const footnote = document.getElementById('prophecyFootnote');
+    async function fetchCSV(spreadsheetId, sheetName) {
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+        const res = await fetch(url);
+        const text = await res.text();
+        return text.split('\n').map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
+    }
 
-        if (type === '前半賛美') {
-            prophecySection.style.display = 'block';
-            footnote.style.display = 'none';
-            // ④ 前半用の選択肢をセットするロジック（後ほどスプレッドシートと連動）
-            prophecySelect.innerHTML = '<option value="">選択してください（前半賛美預言後タブより）</option><option value="other">その他（全曲から参照）</option>';
-            prophecySelect.disabled = false;
+    async function loadSingers() {
+        try {
+            const rows = await fetchCSV(CONFIG.HAKUBA_SS_ID, '会衆賛美チーム');
+            const select = document.getElementById('singerName');
+            select.innerHTML = '<option value="">選択してください</option>';
+            for(let i = 1; i < rows.length; i++) {
+                if(rows[i][0]) {
+                    masterData.singers.push(rows[i][0]);
+                    const opt = document.createElement('option');
+                    opt.value = rows[i][0]; opt.textContent = rows[i][0];
+                    select.appendChild(opt);
+                }
+            }
+        } catch(e) { console.error("奉仕者名取得失敗:", e); }
+    }
 
-        } else if (type === '後半賛美') {
-            prophecySection.style.display = 'block';
-            footnote.style.display = 'block'; // ⑤ 脚注を表示
-            // ⑤ 後半は固定
-            prophecySelect.innerHTML = '<option value="God is working for my good">God is working for my good(マーリンさん)</option>';
-            prophecySelect.disabled = true; // 固定のため選択不可に
+    async function loadAllSongs() {
+        try {
+            const rows = await fetchCSV(CONFIG.BOOK_SS_ID, '全曲');
+            masterData.allSongs = [];
+            let categories = new Set();
 
-        } else {
-            // 特別賛美などの場合は非表示
-            prophecySection.style.display = 'none';
+            for(let i = 1; i < rows.length; i++) {
+                let code = rows[i][0];
+                let num = rows[i][1];
+                let title = rows[i][2];
+                if(code && title) {
+                    let prefix = code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
+                    let volume = code.replace(/^[KY]/, '');
+                    let textCategory = `${prefix}${volume}集`;
+                    
+                    categories.add(textCategory);
+                    masterData.allSongs.push({
+                        category: textCategory,
+                        num: num,
+                        title: title,
+                        fullName: `${textCategory} ${num}番「${title}」`
+                    });
+                }
+            }
+            masterData.bookCategories = Array.from(categories).sort().reverse();
+            buildFilterDropdowns();
+        } catch(e) { console.error("全曲データ取得失敗:", e); }
+    }
+
+    async function loadEarlyProphecySongs() {
+        try {
+            const rows = await fetchCSV(CONFIG.BOOK_SS_ID, '前半賛美預言後');
+            masterData.earlyProphecySongs = rows.slice(1).map(r => r[0]).filter(Boolean);
+        } catch(e) { console.error("前半預言後取得失敗:", e); }
+    }
+
+    function buildFilterDropdowns() {
+        ['1', '2', '3', 'Special'].forEach(id => {
+            const f = document.getElementById(`book_filter${id}`);
+            if(!f) return;
+            f.innerHTML = '<option value="">歌集・集数を選択</option>';
+            masterData.bookCategories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat; opt.textContent = cat;
+                f.appendChild(opt);
+            });
+        });
+    }
+
+    function filterSongs(stepId) {
+        const filterVal = document.getElementById(`book_filter${stepId}`).value;
+        const targetSelect = document.getElementById(stepId === 'Special' ? 'specialSong' : `song${stepId}`);
+        
+        targetSelect.innerHTML = '<option value="">曲を選択してください</option>';
+        if(!filterVal) return;
+
+        const filtered = masterData.allSongs.filter(s => s.category === filterVal);
+        filtered.forEach(song => {
+            const isBooked = masterData.bookedSongs.includes(song.fullName);
+            const opt = document.createElement('option');
+            opt.value = song.fullName;
+            opt.textContent = `${song.num}番 「${song.title}」`;
+            if (isBooked) {
+                opt.disabled = true;
+                opt.textContent += " (既に入力済み)";
+            }
+            targetSelect.appendChild(opt);
+        });
+    }
+
+    async function updateBookedSongs() {
+        const meeting = document.getElementById('meetingEvent').value;
+        const typeElem = document.querySelector('input[name="worshipType"]:checked');
+        if (!meeting || !typeElem) return;
+        
+        const type = typeElem.value;
+        const sheetType = type === "特別賛美" ? "特別賛美" : (type === "前半賛美" ? "前半" : "後半");
+
+        try {
+            const rows = await fetchCSV(CONFIG.HAKUBA_SS_ID, '聖会選曲一覧');
+            masterData.bookedSongs = [];
+            let currentMeeting = ""; let currentType = "";
+            for(let i = 1; i < rows.length; i++) {
+                if(rows[i][0]) currentMeeting = rows[i][0];
+                if(rows[i][1]) currentType = rows[i][1];
+                if(currentMeeting === meeting && currentType === sheetType && rows[i][4]) {
+                    masterData.bookedSongs.push(rows[i][4]);
+                }
+            }
+            ['1','2','3','Special'].forEach(id => filterSongs(id));
+            if(type === '前半賛美') setupEarlyProphecyDropdown();
+        } catch(e) { console.error("予約済み曲取得失敗:", e); }
+    }
+
+    function setupEarlyProphecyDropdown() {
+        const select = document.getElementById('song3');
+        select.innerHTML = '<option value="">曲を選択してください（前半賛美預言後）</option>';
+        
+        masterData.earlyProphecySongs.forEach(song => {
+            const opt = document.createElement('option');
+            opt.value = song; opt.textContent = song;
+            select.appendChild(opt);
+        });
+        
+        const otherOpt = document.createElement('option');
+        otherOpt.value = "__OTHER__"; otherOpt.textContent = "その他（全曲一覧から検索する）";
+        select.appendChild(otherOpt);
+    }
+
+    function initEventListeners() {
+        document.getElementById('meetingEvent').addEventListener('change', updateBookedSongs);
+        document.querySelectorAll('input[name="worshipType"]').forEach(elem => {
+            elem.addEventListener('change', (e) => {
+                handleWorshipTypeChange(e.target.value);
+                updateBookedSongs();
+            });
+        });
+
+        document.getElementById('song1').addEventListener('change', () => showElement('step_branch1', true));
+        document.querySelectorAll('input[name="branch1"]').forEach(r => r.addEventListener('change', (e) => handleBranch(1, e.target.value)));
+        
+        document.getElementById('song2').addEventListener('change', () => showElement('step_branch2', true));
+        document.querySelectorAll('input[name="branch2"]').forEach(r => r.addEventListener('change', (e) => handleBranch(2, e.target.value)));
+
+        document.getElementById('song3').addEventListener('change', (e) => {
+            if(e.target.value === "__OTHER__") {
+                document.getElementById('filter_area3').classList.remove('hidden');
+                document.getElementById('song3').innerHTML = '<option value="">まず歌集を選択してください</option>';
+            }
+        });
+    }
+
+    function showElement(id, isShow) {
+        const el = document.getElementById(id);
+        if (isShow) el.classList.remove('hidden'); else el.classList.add('hidden');
+    }
+
+    function handleBranch(stepNum, val) {
+        if (stepNum === 1) {
+            showElement('step_song2', val === 'next');
+            showElement('step_song3', val === 'prophecy');
+            if (val !== 'next') { showElement('step_branch2', false); showElement('step_song2', false); }
+        } else if (stepNum === 2) {
+            showElement('step_song3', val === 'next' || val === 'prophecy');
         }
     }
 
-    // フォーム送信時の処理（モック）
-    document.getElementById('worshipForm').addEventListener('submit', function(e) {
+    function handleWorshipTypeChange(type) {
+        ['specialSongArea','groupNameArea','orchestraArea','step_song1','step_branch1','step_song2','step_branch2','step_song3','prophecyFootnote'].forEach(id => showElement(id, false));
+        document.querySelectorAll('input[type="radio"][name^="branch"]').forEach(r => r.checked = false);
+        document.getElementById('filter_area3').classList.remove('hidden');
+        
+        if (!type) { showElement('selectionSection', false); return; }
+        showElement('selectionSection', true);
+
+        if (type === '特別賛美') {
+            showElement('specialSongArea', true); showElement('groupNameArea', true); showElement('orchestraArea', true);
+        } else if (type === '前半賛美') {
+            showElement('step_song1', true);
+            document.getElementById('song3Label').textContent = "11. 選曲（曲順3: 預言後の曲）";
+            document.getElementById('filter_area3').classList.add('hidden');
+            setupEarlyProphecyDropdown();
+        } else if (type === '後半賛美') {
+            showElement('step_song1', true);
+            document.getElementById('song3Label').textContent = "11. 選曲(3曲目)";
+            buildFilterDropdowns();
+        }
+    }
+
+    document.getElementById('worshipForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        alert('送信処理（今後Googleスプレッドシートへの書き込み処理などを実装します）');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingMsg = document.getElementById('loadingMsg');
+        submitBtn.disabled = true; loadingMsg.classList.remove('hidden');
+
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        data.worshipType = document.querySelector('input[name="worshipType"]:checked').value;
+
+        try {
+            await fetch(CONFIG.GAS_WEBAPP_URL, {
+                method: 'POST', mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            alert('選曲連絡が正常に送信され、スプレッドシートへ反映されました！');
+            e.target.reset();
+            handleWorshipTypeChange('');
+        } catch (error) {
+            alert('送信中にエラーが発生しました。');
+        } finally {
+            submitBtn.disabled = false; loadingMsg.classList.add('hidden');
+        }
     });
 </script>
 </body>
