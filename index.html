@@ -45,7 +45,7 @@
             <div class="form-group">
                 <label class="required">1. 奉仕者名</label>
                 <select id="singerName" name="singerName" required>
-                    <option value="">マスターデータを読み込み中...</option>
+                    <option value="">データを読み込み中...</option>
                 </select>
             </div>
 
@@ -162,24 +162,44 @@
 
 <script>
     const CONFIG = {
-        GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwL-UmKIU8fQUFdMnUJAQLK__ID8wQVb6tE6A5hxDhRt4SNrv4oHZ5kJ921rBoTZoAobg/exec' // ★新しく取得したGASのウェブアプリURLに書き換えてください
+        GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwL-UmKIU8fQUFdMnUJAQLK__ID8wQVb6tE6A5hxDhRt4SNrv4oHZ5kJ921rBoTZoAobg/exec' // ★ここにGASのウェブアプリURLを貼り付けてください
     };
 
     let masterData = { singers: [], allSongs: [], earlyProphecySongs: [], bookedSongs: [], bookCategories: [] };
 
-    // 画面ロード時にGASから全マスターデータを一括取得する（CORS制限の完全回避）
+    // セキュリティ制限(CORS)を100%回避してGASからデータを受け取るためのJSONP関数
+    function fetchJSONP(url, params, callbackName) {
+        return new Promise((resolve, reject) => {
+            window[callbackName] = function(data) {
+                resolve(data);
+                document.getElementById(scriptId).remove();
+                delete window[callbackName];
+            };
+            const scriptId = 'jsonp_' + Date.now() + Math.floor(Math.random()*1000);
+            const script = document.createElement('script');
+            script.id = scriptId;
+            
+            let queryParams = { callback: callbackName, ...params };
+            let queryString = Object.keys(queryParams).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(queryParams[k])).join('&');
+            
+            script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + queryString;
+            script.onerror = () => {
+                reject(new Error('通信に失敗しました。'));
+                document.getElementById(scriptId).remove();
+                delete window[callbackName];
+            };
+            document.body.appendChild(script);
+        });
+    }
+
+    // 起動時にデータを取得
     window.addEventListener('DOMContentLoaded', async () => {
         try {
-            const res = await fetch(CONFIG.GAS_WEBAPP_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'loadInit' })
-            });
-            const result = await res.json();
+            const result = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadInit' }, 'cb_init');
             
             masterData.singers = result.singers;
             masterData.earlyProphecySongs = result.earlyProphecySongs;
             
-            // 全曲データをパースして「風のひびき13集」などのカテゴリに再編集
             let categories = new Set();
             masterData.allSongs = result.allSongs.map(song => {
                 let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
@@ -194,15 +214,14 @@
                     fullName: `${textCategory} ${song.num}番「${song.title}」`
                 };
             });
-            masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true})); // 数字の大きい順にソート
+            masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true}));
             
-            // 各プルダウンの生成
             renderSingerDropdown();
             buildFilterDropdowns();
             initEventListeners();
         } catch(e) {
-            console.error("初期データの読み込みに失敗しました:", e);
-            alert("データの通信に失敗しました。GASのURL設定を確認してください。");
+            console.error(e);
+            alert("データの初期読み込みに失敗しました。GASのURL設定等を確認してください。");
         }
     });
 
@@ -250,7 +269,6 @@
         });
     }
 
-    // 聖会が変わるたびに、GASに入力済みの曲リストをリアルタイム取得しに行く
     async function updateBookedSongs() {
         const meeting = document.getElementById('meetingEvent').value;
         const typeElem = document.querySelector('input[name="worshipType"]:checked');
@@ -258,11 +276,7 @@
         
         const type = typeElem.value;
         try {
-            const res = await fetch(CONFIG.GAS_WEBAPP_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'loadBooked', meetingEvent: meeting, worshipType: type })
-            });
-            const result = await res.json();
+            const result = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadBooked', meetingEvent: meeting, worshipType: type }, 'cb_booked');
             masterData.bookedSongs = result.bookedSongs || [];
             
             ['1','2','3','Special'].forEach(id => {
@@ -270,7 +284,7 @@
                 if(filter && filter.value) filterSongs(id);
             });
             if(type === '前半賛美') setupEarlyProphecyDropdown();
-        } catch(e) { console.error("入力済み曲の取得失敗:", e); }
+        } catch(e) { console.error(e); }
     }
 
     function setupEarlyProphecyDropdown() {
@@ -357,14 +371,14 @@
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
         data.worshipType = document.querySelector('input[name="worshipType"]:checked').value;
-        data.action = 'submit'; // アクションを明示
 
         try {
-            const res = await fetch(CONFIG.GAS_WEBAPP_URL, {
+            await fetch(CONFIG.GAS_WEBAPP_URL, {
                 method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            const result = await res.json();
             alert('選曲連絡が正常に送信され、スプレッドシートへ反映されました！');
             e.target.reset();
             handleWorshipTypeChange('');
