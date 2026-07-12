@@ -45,7 +45,7 @@
             <div class="form-group">
                 <label class="required">1. 奉仕者名</label>
                 <select id="singerName" name="singerName" required>
-                    <option value="">読み込み中...</option>
+                    <option value="">マスターデータを読み込み中...</option>
                 </select>
             </div>
 
@@ -161,77 +161,59 @@
 </div>
 
 <script>
-    // 修正済みの設定項目
     const CONFIG = {
-        HAKUBA_SS_ID: '1f50NLanz3IEriqOY3FKMo2pMYOJnESS4', // 白馬選曲一覧
-        BOOK_SS_ID: '1jyNAb3GM9UhXj2hNfB36WbevJ24avNIQ',   // 歌集一覧表
-        GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwL-UmKIU8fQUFdMnUJAQLK__ID8wQVb6tE6A5hxDhRt4SNrv4oHZ5kJ921rBoTZoAobg/exec'        // ★ここにGASのウェブアプリURLを貼り付けてください
+        GAS_WEBAPP_URL: 'YOUR_GAS_WEBAPP_URL_HERE' // ★新しく取得したGASのウェブアプリURLに書き換えてください
     };
 
     let masterData = { singers: [], allSongs: [], earlyProphecySongs: [], bookedSongs: [], bookCategories: [] };
 
+    // 画面ロード時にGASから全マスターデータを一括取得する（CORS制限の完全回避）
     window.addEventListener('DOMContentLoaded', async () => {
-        await Promise.all([loadSingers(), loadAllSongs(), loadEarlyProphecySongs()]);
-        initEventListeners();
+        try {
+            const res = await fetch(CONFIG.GAS_WEBAPP_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'loadInit' })
+            });
+            const result = await res.json();
+            
+            masterData.singers = result.singers;
+            masterData.earlyProphecySongs = result.earlyProphecySongs;
+            
+            // 全曲データをパースして「風のひびき13集」などのカテゴリに再編集
+            let categories = new Set();
+            masterData.allSongs = result.allSongs.map(song => {
+                let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
+                let volume = song.code.replace(/^[KY]/, '');
+                let textCategory = `${prefix}${volume}集`;
+                categories.add(textCategory);
+                
+                return {
+                    category: textCategory,
+                    num: song.num,
+                    title: song.title,
+                    fullName: `${textCategory} ${song.num}番「${song.title}」`
+                };
+            });
+            masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true})); // 数字の大きい順にソート
+            
+            // 各プルダウンの生成
+            renderSingerDropdown();
+            buildFilterDropdowns();
+            initEventListeners();
+        } catch(e) {
+            console.error("初期データの読み込みに失敗しました:", e);
+            alert("データの通信に失敗しました。GASのURL設定を確認してください。");
+        }
     });
 
-    async function fetchCSV(spreadsheetId, sheetName) {
-        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-        const res = await fetch(url);
-        const text = await res.text();
-        return text.split('\n').map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
-    }
-
-    async function loadSingers() {
-        try {
-            const rows = await fetchCSV(CONFIG.HAKUBA_SS_ID, '会衆賛美チーム');
-            const select = document.getElementById('singerName');
-            select.innerHTML = '<option value="">選択してください</option>';
-            for(let i = 1; i < rows.length; i++) {
-                if(rows[i][0]) {
-                    masterData.singers.push(rows[i][0]);
-                    const opt = document.createElement('option');
-                    opt.value = rows[i][0]; opt.textContent = rows[i][0];
-                    select.appendChild(opt);
-                }
-            }
-        } catch(e) { console.error("奉仕者名取得失敗:", e); }
-    }
-
-    async function loadAllSongs() {
-        try {
-            const rows = await fetchCSV(CONFIG.BOOK_SS_ID, '全曲');
-            masterData.allSongs = [];
-            let categories = new Set();
-
-            for(let i = 1; i < rows.length; i++) {
-                let code = rows[i][0];
-                let num = rows[i][1];
-                let title = rows[i][2];
-                if(code && title) {
-                    let prefix = code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
-                    let volume = code.replace(/^[KY]/, '');
-                    let textCategory = `${prefix}${volume}集`;
-                    
-                    categories.add(textCategory);
-                    masterData.allSongs.push({
-                        category: textCategory,
-                        num: num,
-                        title: title,
-                        fullName: `${textCategory} ${num}番「${title}」`
-                    });
-                }
-            }
-            masterData.bookCategories = Array.from(categories).sort().reverse();
-            buildFilterDropdowns();
-        } catch(e) { console.error("全曲データ取得失敗:", e); }
-    }
-
-    async function loadEarlyProphecySongs() {
-        try {
-            const rows = await fetchCSV(CONFIG.BOOK_SS_ID, '前半賛美預言後');
-            masterData.earlyProphecySongs = rows.slice(1).map(r => r[0]).filter(Boolean);
-        } catch(e) { console.error("前半預言後取得失敗:", e); }
+    function renderSingerDropdown() {
+        const select = document.getElementById('singerName');
+        select.innerHTML = '<option value="">選択してください</option>';
+        masterData.singers.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            select.appendChild(opt);
+        });
     }
 
     function buildFilterDropdowns() {
@@ -268,28 +250,27 @@
         });
     }
 
+    // 聖会が変わるたびに、GASに入力済みの曲リストをリアルタイム取得しに行く
     async function updateBookedSongs() {
         const meeting = document.getElementById('meetingEvent').value;
         const typeElem = document.querySelector('input[name="worshipType"]:checked');
         if (!meeting || !typeElem) return;
         
         const type = typeElem.value;
-        const sheetType = type === "特別賛美" ? "特別賛美" : (type === "前半賛美" ? "前半" : "後半");
-
         try {
-            const rows = await fetchCSV(CONFIG.HAKUBA_SS_ID, '聖会選曲一覧');
-            masterData.bookedSongs = [];
-            let currentMeeting = ""; let currentType = "";
-            for(let i = 1; i < rows.length; i++) {
-                if(rows[i][0]) currentMeeting = rows[i][0];
-                if(rows[i][1]) currentType = rows[i][1];
-                if(currentMeeting === meeting && currentType === sheetType && rows[i][4]) {
-                    masterData.bookedSongs.push(rows[i][4]);
-                }
-            }
-            ['1','2','3','Special'].forEach(id => filterSongs(id));
+            const res = await fetch(CONFIG.GAS_WEBAPP_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'loadBooked', meetingEvent: meeting, worshipType: type })
+            });
+            const result = await res.json();
+            masterData.bookedSongs = result.bookedSongs || [];
+            
+            ['1','2','3','Special'].forEach(id => {
+                const filter = document.getElementById(`book_filter${id}`);
+                if(filter && filter.value) filterSongs(id);
+            });
             if(type === '前半賛美') setupEarlyProphecyDropdown();
-        } catch(e) { console.error("予約済み曲取得失敗:", e); }
+        } catch(e) { console.error("入力済み曲の取得失敗:", e); }
     }
 
     function setupEarlyProphecyDropdown() {
@@ -376,13 +357,14 @@
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
         data.worshipType = document.querySelector('input[name="worshipType"]:checked').value;
+        data.action = 'submit'; // アクションを明示
 
         try {
-            await fetch(CONFIG.GAS_WEBAPP_URL, {
-                method: 'POST', mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+            const res = await fetch(CONFIG.GAS_WEBAPP_URL, {
+                method: 'POST',
                 body: JSON.stringify(data)
             });
+            const result = await res.json();
             alert('選曲連絡が正常に送信され、スプレッドシートへ反映されました！');
             e.target.reset();
             handleWorshipTypeChange('');
