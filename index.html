@@ -24,11 +24,11 @@
         .footnote { font-size: 13px; color: #a4262c; margin-top: 6px; font-weight: bold; }
         .btn-submit { background-color: #0078d4; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
         .btn-submit:hover { background-color: #106ebe; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .loading-msg { color: #0078d4; font-size: 14px; font-style: italic; }
         .info-bar { background-color: #f3f2f1; padding: 12px; border-left: 4px solid #0078d4; font-size: 13px; margin-bottom: 20px; font-weight: 600; }
 
-        /* モーダルポップアップ */
+        /* モーダルポップアップ設定 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .modal-box { background: #ffffff; width: 90%; max-width: 500px; border-radius: 6px; box-shadow: 0 12px 40px rgba(0,0,0,0.25); overflow: hidden; border-top: 6px solid #0078d4; }
         .modal-header { padding: 16px 20px; background: #f3f2f1; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edebe9; }
@@ -123,6 +123,14 @@
                     </div>
                 </div>
             </div>
+
+            <div id="contactTypeArea" class="form-group hidden" style="margin-top: 25px; border-top: 1px dashed #edebe9; padding-top: 25px;">
+                <label class="required">2. 連絡内容</label>
+                <div class="radio-group">
+                    <div class="radio-item"><input type="radio" name="contactType" value="新規" required checked> 新規</div>
+                    <div class="radio-item"><input type="radio" name="contactType" value="変更"> 変更（変更の場合は、全曲選択しなおしてください）</div>
+                </div>
+            </div>
         </div>
 
         <div id="selectionSection" class="section hidden">
@@ -178,7 +186,7 @@
     </form>
 </div>
 
-<div id="smartModal" class="modal-overlay hidden">
+<div id="smartModal" class="modal-overlay" style="display: none;">
     <div class="modal-box">
         <div class="modal-header"><div class="modal-title">📋 担当聖会の自動判定</div></div>
         <div class="modal-body" id="smartModalBody"></div>
@@ -187,7 +195,6 @@
 </div>
 
 <script>
-    // ユーザー提供の固定URLを埋め込み済み
     const CONFIG = {
         GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwL-UmKIU8fQUFdMnUJAQLK__ID8wQVb6tE6A5hxDhRt4SNrv4oHZ5kJ921rBoTZoAobg/exec' 
     };
@@ -216,26 +223,23 @@
             masterData.dynamicDuties = result.dynamicDuties || [];
             masterData.specialTeams = result.specialTeams || [];
             
-            // 【改修】前半賛美預言後の曲リストを新フォーマットに成形
             masterData.earlyProphecySongs = result.earlyProphecySongs.map(song => {
                 let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
                 let volume = song.code.replace(/^[KY]/, '');
                 return `${prefix} ${volume}集 ${song.num} ${song.title}`;
             });
             
-            // 【改修】全曲データを新フォーマット（半角スペース区切り、「」なし）に一元化
             let categories = new Set();
             masterData.allSongs = result.allSongs.map(song => {
                 let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
                 let volume = song.code.replace(/^[KY]/, '');
-                let textCategory = `${prefix} ${volume}集`; // 歌集名の後に半角スペース
+                let textCategory = `${prefix} ${volume}集`; 
                 categories.add(textCategory);
-                
                 return {
                     category: textCategory,
                     num: song.num,
                     title: song.title,
-                    fullName: `${prefix} ${volume}集 ${song.num} ${song.title}` // 例: 風のひびき 13集 57 勝利
+                    fullName: `${prefix} ${volume}集 ${song.num} ${song.title}` 
                 };
             });
             masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true}));
@@ -272,12 +276,11 @@
         }
         const targetSelect = document.getElementById(stepId === 'Special' ? 'specialSongSelect' : `song${stepId}`);
         targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if(!filterVal) return;
-        
         const filtered = masterData.allSongs.filter(s => s.category === filterVal);
         filtered.forEach(song => {
             const isBooked = masterData.bookedSongs.includes(song.fullName);
             const opt = document.createElement('option'); opt.value = song.fullName; 
-            opt.textContent = `${song.num} ${song.title}`; // ドロップダウン内も「番」や「」を排除
+            opt.textContent = `${song.num} ${song.title}`; 
             if (isBooked) { opt.disabled = true; opt.textContent += " (既に入力済み)"; } targetSelect.appendChild(opt);
         });
     }
@@ -305,20 +308,20 @@
                     <button type="button" class="btn-modal-no" onclick="applyManualSelect()">いいえ(変更)</button>
                     <button type="button" class="btn-modal-yes" onclick="applyAutoSelect('${duty.meeting}', '${duty.type}')">はい</button>
                 </div>`;
-            modal.classList.remove('hidden');
+            modal.style.display = 'flex'; // インラインで確実に出現させる
         } else if (matches.length > 1) {
             let html = `<strong>${singerName}</strong> は複数のご担当がシートに割り当てられています。<br>今回入力するものをタップしてください：<br><br>`;
             matches.forEach(duty => { html += `<button type="button" class="btn-modal-option" onclick="applyAutoSelect('${duty.meeting}', '${duty.type}')">📅 ${duty.meeting} (${duty.type} - 通常曲数:${duty.maxSongs}曲)</button>`; });
             body.innerHTML = html;
             footer.innerHTML = `<button type="button" class="btn-modal-no" style="width:100%" onclick="applyManualSelect()">一覧にないため手動(変更)で選ぶ</button>`;
-            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
         } else {
             applyManualSelect();
         }
     }
 
     function applyAutoSelect(meeting, type) {
-        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('smartModal').style.display = 'none'; // 確実に閉じる
         document.getElementById('manualSelectGroup').classList.add('hidden');
         finalMeetingEvent = meeting; finalWorshipType = type;
         const infoBar = document.getElementById('autoInfoBar');
@@ -328,12 +331,15 @@
     }
 
     function applyManualSelect() {
-        document.getElementById('smartModal').classList.add('hidden');
+        document.getElementById('smartModal').style.display = 'none'; // 確実に閉じる
         document.getElementById('autoInfoBar').classList.add('hidden');
         document.getElementById('selectionSection').classList.add('hidden');
         showElement('manualSelectGroup', true);
         document.getElementById('meetingEventManual').value = "";
-        document.querySelectorAll('input[name="worshipTypeManual"]').forEach(r => r.checked = false);
+        
+        // ラジオボタンクリアセーフティ
+        const radios = document.querySelectorAll('input[name="worshipTypeManual"]');
+        radios.forEach(r => r.checked = false);
     }
 
     function handleManualSelectionChange() {
@@ -344,8 +350,8 @@
         updateBookedSongs();
     }
 
-    function closeModalAndReset() { document.getElementById('smartModal').classList.add('hidden'); document.getElementById('singerName').value = ""; resetSelectionSection(); }
-    function resetSelectionSection() { showElement('selectionSection', false); showElement('autoInfoBar', false); }
+    function closeModalAndReset() { document.getElementById('smartModal').style.display = 'none'; document.getElementById('singerName').value = ""; resetSelectionSection(); }
+    function resetSelectionSection() { showElement('selectionSection', false); showElement('autoInfoBar', false); showElement('contactTypeArea', false); }
 
     async function updateBookedSongs() {
         const isSpecial = document.querySelector('input[name="displayWorshipType"]:checked').value === '特別賛美';
@@ -353,7 +359,11 @@
             finalMeetingEvent = document.getElementById('meetingEventSpecial').value; finalWorshipType = "特別賛美";
             if(!finalMeetingEvent || !document.getElementById('specialTeamSelect').value) return;
         }
-        showElement('selectionSection', true); showElement('flow_congregation', !isSpecial); showElement('flow_special', isSpecial);
+        
+        showElement('selectionSection', true); 
+        showElement('contactTypeArea', true); 
+        showElement('flow_congregation', !isSpecial); 
+        showElement('flow_special', isSpecial);
         if (!isSpecial) {
             ['step_song1','step_branch1','step_song2','step_branch2','step_song3','step_branch3','prophecyFootnote','step_prophecy'].forEach(id => showElement(id, false));
             showElement('step_song1', true);
@@ -381,7 +391,10 @@
         document.querySelectorAll('input[name="displayWorshipType"]').forEach(r => r.addEventListener('change', (e) => handleMainWorshipTypeChange(e.target.value)));
         document.getElementById('singerName').addEventListener('change', checkSingerDuty);
         document.getElementById('meetingEventManual').addEventListener('change', handleManualSelectionChange);
-        document.querySelectorAll('input[name="worshipTypeManual"]').forEach(r => r.checked = false || r.addEventListener('change', handleManualSelectionChange));
+        
+        const manualRadios = document.querySelectorAll('input[name="worshipTypeManual"]');
+        manualRadios.forEach(r => r.addEventListener('change', handleManualSelectionChange));
+
         document.getElementById('specialTeamSelect').addEventListener('change', (e) => { showElement('specialTeamManualArea', e.target.value === '__OTHER__'); updateBookedSongs(); });
         document.getElementById('meetingEventSpecial').addEventListener('change', updateBookedSongs);
         document.getElementById('song1').addEventListener('change', () => handleSongSelect(1));
@@ -433,15 +446,22 @@
         submitBtn.disabled = true; loadingMsg.classList.remove('hidden');
         const formData = new FormData(e.target); const rawData = Object.fromEntries(formData.entries());
         
+        const appendSuffix = (songName) => {
+            if (!songName) return songName;
+            if (rawData.contactType === '変更' && !songName.endsWith('(変更)')) { return songName + '(変更)'; }
+            return songName;
+        };
+
         let songMap = {}; let groupName = "";
         if (finalWorshipType === '特別賛美') {
             const teamSel = document.getElementById('specialTeamSelect').value;
             groupName = teamSel === '__OTHER__' ? document.getElementById('specialTeamManual').value : teamSel;
             const isManualSong = document.getElementById('book_filterSpecial').value === '__MANUAL__';
-            songMap["選曲"] = isManualSong ? document.getElementById('specialSongManual').value : document.getElementById('specialSongSelect').value;
+            let specSong = isManualSong ? document.getElementById('specialSongManual').value : document.getElementById('specialSongSelect').value;
+            songMap["選曲"] = appendSuffix(specSong);
         } else {
-            if (rawData.song1) songMap["1"] = rawData.song1;
-            if (rawData.song2 && !document.getElementById('step_song2').classList.contains('hidden')) songMap["2"] = rawData.song2;
+            if (rawData.song1) songMap["1"] = appendSuffix(rawData.song1);
+            if (rawData.song2 && !document.getElementById('step_song2').classList.contains('hidden')) songMap["2"] = appendSuffix(rawData.song2);
             
             const activeDuty = masterData.dynamicDuties.filter(d => d.meeting === finalMeetingEvent && d.type === finalWorshipType)[0];
             const maxNormal = activeDuty ? activeDuty.maxSongs : 2;
@@ -449,16 +469,16 @@
             if (finalWorshipType === '前半賛美') {
                 let activeBranch = document.querySelector('input[name="branch1"]:checked')?.value;
                 let activeBranch2 = document.querySelector('input[name="branch2"]:checked')?.value;
-                if (maxNormal === 1 || activeBranch === 'prophecy') { if (rawData.song2) songMap["2(預言後)"] = rawData.song2; }
-                else if (maxNormal === 2 || activeBranch2 === 'prophecy') { if (rawData.song3) songMap["3(預言後)"] = rawData.song3; }
+                if (maxNormal === 1 || activeBranch === 'prophecy') { if (rawData.song2) songMap["2(預言後)"] = appendSuffix(rawData.song2); }
+                else if (maxNormal === 2 || activeBranch2 === 'prophecy') { if (rawData.song3) songMap["3(預言後)"] = appendSuffix(rawData.song3); }
             } else if (finalWorshipType === '後半賛美') {
-                if (maxNormal === 1) { songMap["2(固定)"] = "God is Working For My Good"; }
-                if (maxNormal === 2) { songMap["1"] = rawData.song1; songMap["2"] = rawData.song2; songMap["3(固定)"] = "God is Working For My Good"; }
-                if (maxNormal === 3) { songMap["1"] = rawData.song1; songMap["2"] = rawData.song2; songMap["3"] = rawData.song3; songMap["4(固定)"] = "God is Working For My Good"; }
+                if (maxNormal === 1) { songMap["2(固定)"] = appendSuffix("God is Working For My Good"); }
+                if (maxNormal === 2) { songMap["1"] = appendSuffix(rawData.song1); songMap["2"] = appendSuffix(rawData.song2); songMap["3(固定)"] = appendSuffix("God is Working For My Good"); }
+                if (maxNormal === 3) { songMap["1"] = appendSuffix(rawData.song1); songMap["2"] = appendSuffix(rawData.song2); songMap["3"] = appendSuffix(rawData.song3); songMap["4(固定)"] = appendSuffix("God is Working For My Good"); }
             }
         }
 
-        const postPayload = { meetingEvent: finalMeetingEvent, worshipType: finalWorshipType, singerName: rawData.singerName || "", groupName: groupName, orchestraDetails: rawData.orchestraDetails || "", remarks: rawData.remarks || "", action: 'submit', songMap: songMap };
+        const postPayload = { meetingEvent: finalMeetingEvent, worshipType: finalWorshipType, singerName: rawData.singerName || "", groupName: groupName, orchestraDetails: rawData.orchestraDetails || "", remarks: rawData.remarks || "", action: 'submit', songMap: songMap, contactType: rawData.contactType };
         try { await fetch(CONFIG.GAS_WEBAPP_URL, { method: 'POST', body: JSON.stringify(postPayload) }); alert('選曲連絡が正常に送信され、スプレッドシートへ反映されました！'); e.target.reset(); handleMainWorshipTypeChange(''); } catch (error) { alert('送信エラー。'); } 
         finally { submitBtn.disabled = false; loadingMsg.classList.add('hidden'); }
     });
