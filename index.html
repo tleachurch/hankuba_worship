@@ -40,7 +40,6 @@
         .btn-modal-no { background-color: #ffffff; color: #323130; border: 1px solid #a19f9d; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; }
         .btn-modal-option { background-color: #f3f2f1; color: #0078d4; border: 1px solid #0078d4; padding: 12px; font-size: 14px; font-weight: 600; border-radius: 4px; cursor: pointer; text-align: left; width: 100%; margin-bottom: 8px; }
         .btn-modal-option:hover { background-color: #f3f9fe; }
-        @keyframes fadeIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -66,24 +65,14 @@
             <div id="route_congregation" class="hidden">
                 <div class="form-group">
                     <label class="required">2. 奉仕者名（チーム名）</label>
-                    <select id="singerName" name="singerName">
-                        <option value="">選択してください</option>
-                    </select>
+                    <select id="singerName" name="singerName"><option value="">データを読み込み中...</option></select>
                 </div>
             </div>
 
             <div id="route_special" class="hidden">
                 <div class="form-group">
                     <label class="required">2. 特別賛美 チーム名</label>
-                    <select id="specialTeamSelect">
-                        <option value="">選択してください</option>
-                        <option value="TrueVine">TrueVine (15水・開会)</option>
-                        <option value="Come&Worship(God is Love)">Come&Worship(God is Love) (15水・夜)</option>
-                        <option value="愛結">愛結 (15水・夜 中高生)</option>
-                        <option value="Lumiere">Lumiere (17金・早天)</option>
-                        <option value="Gospel Seed">Gospel Seed (17金・閉会)</option>
-                        <option value="__OTHER__">その他（手入力）</option>
-                    </select>
+                    <select id="specialTeamSelect"><option value="">選択してください</option></select>
                 </div>
                 <div id="specialTeamManualArea" class="form-group hidden">
                     <label class="required">チーム名入力（その他）</label>
@@ -110,6 +99,30 @@
             </div>
 
             <div id="autoInfoBar" class="info-bar hidden"></div>
+
+            <div id="manualSelectGroup" class="hidden">
+                <div class="form-group">
+                    <label class="required">変更後：奉仕する聖会・集会</label>
+                    <select id="meetingEventManual">
+                        <option value="">選択してください</option>
+                        <option value="14火・夜の聖会">14火・夜の聖会</option>
+                        <option value="15水・早天聖会">15水・早天聖会</option>
+                        <option value="15水・開会聖会">15水・開会聖会</option>
+                        <option value="15水・夜の聖会">15水・夜の聖会</option>
+                        <option value="16木・早天聖会">16木・早天聖会</option>
+                        <option value="16木・夜の聖会">16木・夜の聖会</option>
+                        <option value="17金・早天聖会">17金・早天聖会</option>
+                        <option value="17金・閉会聖会">17金・閉会聖会</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="required">変更後：賛美区分</label>
+                    <div class="radio-group">
+                        <div class="radio-item"><input type="radio" name="worshipTypeManual" value="前半賛美"> 前半賛美</div>
+                        <div class="radio-item"><input type="radio" name="worshipTypeManual" value="後半賛美"> 後半賛美</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="selectionSection" class="section hidden">
@@ -150,9 +163,7 @@
             <div id="flow_special" class="hidden">
                 <div class="form-group">
                     <label class="required">特別賛美 選曲（1曲のみ）</label>
-                    <div class="song-filter-group">
-                        <select id="book_filterSpecial" onchange="filterSongs('Special')"><option value="">歌集を選択</option></select>
-                    </div>
+                    <div class="song-filter-group"><select id="book_filterSpecial" onchange="filterSongs('Special')"><option value="">歌集を選択</option></select></div>
                     <select id="specialSongSelect" class="form-control"><option value="">まず歌集を選択してください</option></select>
                     <input type="text" id="specialSongManual" class="form-control hidden" style="margin-top:8px;" placeholder="曲名を直接手入力してください">
                 </div>
@@ -176,48 +187,35 @@
 </div>
 
 <script>
+    // ユーザー提供の固定URLを埋め込み済み
     const CONFIG = {
-        GAS_WEBAPP_URL: 'YOUR_GAS_WEBAPP_URL_HERE' 
+        GAS_WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwL-UmKIU8fQUFdMnUJAQLK__ID8wQVb6tE6A5hxDhRt4SNrv4oHZ5kJ921rBoTZoAobg/exec' 
     };
 
-    const MASTER_DUTIES = [
-        { singer: "ヨハネ谷口牧師チーム", meeting: "14火・夜の聖会", type: "前半賛美" },
-        { singer: "ダビデ前田牧師チーム", meeting: "14火・夜の聖会", type: "後半賛美" },
-        { singer: "フィべ広田牧師チーム", meeting: "15水・早天聖会", type: "前半賛美" },
-        { singer: "ヨセフ三本松牧師チーム", meeting: "15水・早天聖会", type: "後半賛美" },
-        { singer: "秋元ヨハネ牧師チーム", meeting: "15水・開会聖会", type: "前半賛美" },
-        { singer: "ヨハネ山口牧師チーム", meeting: "15水・開会聖会", type: "後半賛美" },
-        { singer: "テモテ山川牧師チーム", meeting: "15水・夜の聖会", type: "前半賛美" },
-        { singer: "ヨハネ山口牧師チーム", meeting: "15水・夜の聖会", type: "後半賛美" },
-        { singer: "エステル毛内牧師チーム", meeting: "16木・早天聖会", type: "前半賛美" },
-        { singer: "ダニエル森清牧師チーム", meeting: "16木・早天聖会", type: "後半賛美" },
-        { singer: "ピリポ宮城牧師チーム", meeting: "16木・夜の聖会", type: "前半賛美" },
-        { singer: "ヨハネ山口牧師チーム", meeting: "16木・夜の聖会", type: "後半賛美" },
-        { singer: "長崎エルサレム教会チーム", meeting: "17金・早天聖会", type: "前半賛美" },
-        { singer: "ミラクル佐藤牧師チーム", meeting: "17金・早天聖会", type: "後半賛美" },
-        { singer: "四日市シオン教会チーム", meeting: "17金・閉会聖会", type: "前半賛美" },
-        { singer: "ヨハネ山口牧師チーム", meeting: "17金・閉会聖会", type: "後半賛美" }
-    ];
+    let masterData = { singers: [], allSongs: [], earlyProphecySongs: [], bookedSongs: [], bookCategories: [], dynamicDuties: [], specialTeams: [] };
+    let finalWorshipType = ""; 
+    let finalMeetingEvent = ""; 
 
-    const EX_SONG_COUNTS = {
-        "14火・夜の聖会": { 前半: 2, 後半: 3 },
-        "15水・早天聖会": { 前半: 2, 後半: 2 },
-        "15水・開会聖会": { 前半: 2, 後半: 2 },
-        "15水・夜の聖会": { 前半: 2, 後半: 3 },
-        "16木・早天聖会": { 前半: 1, 後半: 1 },
-        "16木・夜の聖会": { 前前半: 1, 後半: 1 },
-        "17金・早天聖会": { 前半: 2, 後半: 3 },
-        "17金・閉会聖会": { 前半: 2, 後半: 3 }
-    };
-
-    let masterData = { singers: [], allSongs: [], earlyProphecySongs: [], bookedSongs: [], bookCategories: [] };
-    let finalWorshipType = ""; // 裏側でGASに送信する用の確定値（前半賛美/後半賛美/特別賛美）
-    let finalMeetingEvent = ""; // 確定した聖会名
+    function fetchJSONP(url, params, callbackName) {
+        return new Promise((resolve, reject) => {
+            window[callbackName] = function(data) { resolve(data); document.getElementById(scriptId).remove(); delete window[callbackName]; };
+            const scriptId = 'jsonp_' + Date.now() + Math.floor(Math.random()*1000);
+            const script = document.createElement('script'); script.id = scriptId;
+            let queryParams = { callback: callbackName, ...params };
+            let queryString = Object.keys(queryParams).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(queryParams[k])).join('&');
+            script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + queryString;
+            script.onerror = () => { reject(new Error('通信失敗')); document.getElementById(scriptId).remove(); delete window[callbackName]; };
+            document.body.appendChild(script);
+        });
+    }
 
     window.addEventListener('DOMContentLoaded', async () => {
         try {
             const result = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadInit' }, 'cb_init');
             masterData.singers = result.singers;
+            masterData.dynamicDuties = result.dynamicDuties || [];
+            masterData.specialTeams = result.specialTeams || [];
+            
             masterData.earlyProphecySongs = result.earlyProphecySongs.map(song => {
                 let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
                 let volume = song.code.replace(/^[KY]/, '');
@@ -232,16 +230,19 @@
             });
             masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true}));
             
-            renderSingerDropdown(); buildFilterDropdowns(); initEventListeners();
-        } catch(e) { alert("マスターデータの初期通信に失敗しました。"); }
+            renderSingerDropdown(); renderSpecialTeamDropdown(); buildFilterDropdowns(); initEventListeners();
+        } catch(e) { alert("マスターデータの初期同期に失敗しました。"); }
     });
 
     function renderSingerDropdown() {
-        const select = document.getElementById('singerName');
-        select.innerHTML = '<option value="">選択してください</option>';
-        masterData.singers.forEach(name => {
-            const opt = document.createElement('option'); opt.value = name; opt.textContent = name; select.appendChild(opt);
-        });
+        const select = document.getElementById('singerName'); select.innerHTML = '<option value="">選択してください</option>';
+        masterData.singers.forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; select.appendChild(opt); });
+    }
+
+    function renderSpecialTeamDropdown() {
+        const select = document.getElementById('specialTeamSelect'); select.innerHTML = '<option value="">選択してください</option>';
+        masterData.specialTeams.forEach(team => { const opt = document.createElement('option'); opt.value = team; opt.textContent = team; select.appendChild(opt); });
+        const otherOpt = document.createElement('option'); otherOpt.value = "__OTHER__"; otherOpt.textContent = "その他（手入力）"; select.appendChild(otherOpt);
     }
 
     function buildFilterDropdowns() {
@@ -249,121 +250,108 @@
             const f = document.getElementById(`book_filter${id}`); if(!f) return;
             f.innerHTML = '<option value="">歌集・集数を選択</option>';
             masterData.bookCategories.forEach(cat => { const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; f.appendChild(opt); });
-            if(id === 'Special') {
-                const otherOpt = document.createElement('option'); otherOpt.value = "__MANUAL__"; otherOpt.textContent = "その他（直接手入力する）"; f.appendChild(otherOpt);
-            }
+            if(id === 'Special') { const otherOpt = document.createElement('option'); otherOpt.value = "__MANUAL__"; otherOpt.textContent = "その他（直接手入力する）"; f.appendChild(otherOpt); }
         });
     }
 
     function filterSongs(stepId) {
         const filterVal = document.getElementById(`book_filter${stepId}`).value;
-        
         if (stepId === 'Special') {
-            // 特別賛美での手入力・ドロップダウン切り替え制御
-            if (filterVal === '__MANUAL__') {
-                showElement('specialSongSelect', false); showElement('specialSongManual', true); return;
-            } else {
-                showElement('specialSongSelect', true); showElement('specialSongManual', false);
-            }
+            if (filterVal === '__MANUAL__') { showElement('specialSongSelect', false); showElement('specialSongManual', true); return; } 
+            else { showElement('specialSongSelect', true); showElement('specialSongManual', false); }
         }
-
         const targetSelect = document.getElementById(stepId === 'Special' ? 'specialSongSelect' : `song${stepId}`);
         targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if(!filterVal) return;
-        
         const filtered = masterData.allSongs.filter(s => s.category === filterVal);
         filtered.forEach(song => {
             const isBooked = masterData.bookedSongs.includes(song.fullName);
             const opt = document.createElement('option'); opt.value = song.fullName; opt.textContent = `${song.num}番 「${song.title}」`;
-            if (isBooked) { opt.disabled = true; opt.textContent += " (既に入力済み)"; }
-            targetSelect.appendChild(opt);
+            if (isBooked) { opt.disabled = true; opt.textContent += " (既に入力済み)"; } select.appendChild(opt);
         });
     }
 
-    // 1. 担当の賛美（会衆/特別）の切り替えイベント
     function handleMainWorshipTypeChange(type) {
-        showElement('route_congregation', type === '会衆賛美');
-        showElement('route_special', type === '特別賛美');
-        document.getElementById('selectionSection').classList.add('hidden');
-        document.getElementById('autoInfoBar').classList.add('hidden');
-        document.getElementById('singerName').value = "";
-        document.getElementById('specialTeamSelect').value = "";
-        document.getElementById('meetingEventSpecial').value = "";
+        showElement('route_congregation', type === '会衆賛美'); showElement('route_special', type === '特別賛美');
+        document.getElementById('manualSelectGroup').classList.add('hidden');
+        resetSelectionSection();
     }
 
-    // 会衆賛美：奉仕者名から聖会情報を全自動逆引きするポップアップ
     function checkSingerDuty() {
         const singerName = document.getElementById('singerName').value;
         if (!singerName) { resetSelectionSection(); return; }
 
-        const matches = MASTER_DUTIES.filter(d => d.singer === singerName);
+        const matches = masterData.dynamicDuties.filter(d => d.team === singerName);
         const modal = document.getElementById('smartModal');
         const body = document.getElementById('smartModalBody');
         const footer = document.getElementById('smartModalFooter');
 
         if (matches.length === 1) {
             const duty = matches[0];
-            body.innerHTML = `あなたは <strong>【${duty.meeting} の ${duty.type}】</strong> のご担当でお間違いないですか？`;
+            body.innerHTML = `あなたは <strong>【${duty.meeting} の ${duty.type} (通常曲数:${duty.maxSongs}曲)】</strong> のご担当でお間違いないですか？`;
             footer.innerHTML = `
                 <div class="modal-btn-group">
-                    <button type="button" class="btn-modal-no" onclick="closeModalAndReset()">キャンセル</button>
+                    <button type="button" class="btn-modal-no" onclick="applyManualSelect()">いいえ(変更)</button>
                     <button type="button" class="btn-modal-yes" onclick="applyAutoSelect('${duty.meeting}', '${duty.type}')">はい</button>
                 </div>`;
             modal.classList.remove('hidden');
         } else if (matches.length > 1) {
-            let html = `<strong>${singerName}</strong> は複数のご担当が割り当てられています。<br>今回入力するものを以下からタップしてください：<br><br>`;
-            matches.forEach(duty => {
-                html += `<button type="button" class="btn-modal-option" onclick="applyAutoSelect('${duty.meeting}', '${duty.type}')">📅 ${duty.meeting} (${duty.type})</button>`;
-            });
+            let html = `<strong>${singerName}</strong> は複数のご担当がシートに割り当てられています。<br>今回入力するものをタップしてください：<br><br>`;
+            matches.forEach(duty => { html += `<button type="button" class="btn-modal-option" onclick="applyAutoSelect('${duty.meeting}', '${duty.type}')">📅 ${duty.meeting} (${duty.type} - 通常曲数:${duty.maxSongs}曲)</button>`; });
             body.innerHTML = html;
-            footer.innerHTML = `<button type="button" class="btn-modal-no" style="width:100%" onclick="closeModalAndReset()">キャンセル</button>`;
+            footer.innerHTML = `<button type="button" class="btn-modal-no" style="width:100%" onclick="applyManualSelect()">一覧にないため手動(変更)で選ぶ</button>`;
             modal.classList.remove('hidden');
         } else {
-            alert("ご担当データがマスタに見つかりません。管理者にお問い合わせください。");
-            document.getElementById('singerName').value = "";
+            // マスタにない名前が選ばれたら自動的に手動（上書き）ルートへ
+            applyManualSelect();
         }
     }
 
     function applyAutoSelect(meeting, type) {
         document.getElementById('smartModal').classList.add('hidden');
-        finalMeetingEvent = meeting;
-        finalWorshipType = type; // 内部で「前半賛美」または「後半賛美」を保持
-
+        document.getElementById('manualSelectGroup').classList.add('hidden');
+        finalMeetingEvent = meeting; finalWorshipType = type;
         const infoBar = document.getElementById('autoInfoBar');
         infoBar.innerHTML = `✅ 判定完了 ➔ <strong>${meeting} 【${type}】</strong> の選曲画面を表示中`;
         infoBar.classList.remove('hidden');
-
         updateBookedSongs();
     }
 
-    function closeModalAndReset() {
+    // 【重要新機能】「いいえ(変更)」を選んだときの挙動
+    function applyManualSelect() {
         document.getElementById('smartModal').classList.add('hidden');
-        document.getElementById('singerName').value = "";
-        resetSelectionSection();
+        document.getElementById('autoInfoBar').classList.add('hidden');
+        document.getElementById('selectionSection').classList.add('hidden');
+        
+        // 手動選択のドロップダウンを表示し、入力者に選んでもらう
+        showElement('manualSelectGroup', true);
+        document.getElementById('meetingEventManual').value = "";
+        document.querySelectorAll('input[name="worshipTypeManual"]').forEach(r => r.checked = false);
     }
 
-    function resetSelectionSection() {
-        document.getElementById('selectionSection').classList.add('hidden');
-        document.getElementById('autoInfoBar').classList.add('hidden');
+    function handleManualSelectionChange() {
+        const meeting = document.getElementById('meetingEventManual').value;
+        const typeElem = document.querySelector('input[name="worshipTypeManual"]:checked');
+        if (!meeting || !typeElem) return;
+
+        finalMeetingEvent = meeting;
+        finalWorshipType = typeElem.value;
+        updateBookedSongs();
     }
+
+    function closeModalAndReset() { document.getElementById('smartModal').classList.add('hidden'); document.getElementById('singerName').value = ""; resetSelectionSection(); }
+    function resetSelectionSection() { showElement('selectionSection', false); showElement('autoInfoBar', false); }
 
     async function updateBookedSongs() {
         const isSpecial = document.querySelector('input[name="displayWorshipType"]:checked').value === '特別賛美';
-        
         if (isSpecial) {
-            finalMeetingEvent = document.getElementById('meetingEventSpecial').value;
-            finalWorshipType = "特別賛美";
+            finalMeetingEvent = document.getElementById('meetingEventSpecial').value; finalWorshipType = "特別賛美";
             if(!finalMeetingEvent || !document.getElementById('specialTeamSelect').value) return;
         }
-
-        showElement('selectionSection', true);
-        showElement('flow_congregation', !isSpecial);
-        showElement('flow_special', isSpecial);
-
+        showElement('selectionSection', true); showElement('flow_congregation', !isSpecial); showElement('flow_special', isSpecial);
         if (!isSpecial) {
             ['step_song1','step_branch1','step_song2','step_branch2','step_song3','step_branch3','prophecyFootnote','step_prophecy'].forEach(id => showElement(id, false));
             showElement('step_song1', true);
         }
-
         try {
             const result = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadBooked', meetingEvent: finalMeetingEvent, worshipType: finalWorshipType }, 'cb_booked');
             masterData.bookedSongs = result.bookedSongs || [];
@@ -387,12 +375,12 @@
         document.querySelectorAll('input[name="displayWorshipType"]').forEach(r => r.addEventListener('change', (e) => handleMainWorshipTypeChange(e.target.value)));
         document.getElementById('singerName').addEventListener('change', checkSingerDuty);
         
-        document.getElementById('specialTeamSelect').addEventListener('change', (e) => {
-            showElement('specialTeamManualArea', e.target.value === '__OTHER__');
-            updateBookedSongs();
-        });
-        document.getElementById('meetingEventSpecial').addEventListener('change', updateBookedSongs);
+        // 手動選択欄のイベント監視
+        document.getElementById('meetingEventManual').addEventListener('change', handleManualSelectionChange);
+        document.querySelectorAll('input[name="worshipTypeManual"]').forEach(r => r.addEventListener('change', handleManualSelectionChange));
 
+        document.getElementById('specialTeamSelect').addEventListener('change', (e) => { showElement('specialTeamManualArea', e.target.value === '__OTHER__'); updateBookedSongs(); });
+        document.getElementById('meetingEventSpecial').addEventListener('change', updateBookedSongs);
         document.getElementById('song1').addEventListener('change', () => handleSongSelect(1));
         document.getElementById('song2').addEventListener('change', () => handleSongSelect(2));
         document.getElementById('song3').addEventListener('change', (e) => {
@@ -403,7 +391,9 @@
     function showElement(id, isShow) { const el = document.getElementById(id); if (isShow) el.classList.remove('hidden'); else el.classList.add('hidden'); }
 
     function handleSongSelect(stepNum) {
-        const maxNormal = EX_SONG_COUNTS[finalMeetingEvent] ? EX_SONG_COUNTS[finalMeetingEvent][finalWorshipType === '前半賛美' ? '前半' : '後半'] : 2;
+        const activeDuty = masterData.dynamicDuties.filter(d => d.meeting === finalMeetingEvent && d.type === finalWorshipType)[0];
+        const maxNormal = activeDuty ? activeDuty.maxSongs : 2;
+        
         if (stepNum === 1) {
             const container = document.getElementById('branch1RadioGroup'); let html = '';
             if (maxNormal >= 2) html += `<div class="radio-item"><input type="radio" name="branch1" value="next" onclick="handleBranch(1,'next')"> 2曲目選曲へ</div>`;
@@ -421,12 +411,10 @@
 
     function handleBranch(stepNum, val) {
         if (stepNum === 1) {
-            showElement('step_song2', val === 'next');
-            if (val === 'prophecy') openProphecyStep(2);
+            showElement('step_song2', val === 'next'); if (val === 'prophecy') openProphecyStep(2);
             if (val === 'end') { ['step_song2','step_branch2','step_song3','step_branch3','step_prophecy','prophecyFootnote'].forEach(id => showElement(id, false)); }
         } else if (stepNum === 2) {
-            showElement('step_song3', val === 'next');
-            if (val === 'prophecy') openProphecyStep(3);
+            showElement('step_song3', val === 'next'); if (val === 'prophecy') openProphecyStep(3);
             if (val === 'end') { ['step_song3','step_branch3','step_prophecy','prophecyFootnote'].forEach(id => showElement(id, false)); }
         }
     }
@@ -437,27 +425,24 @@
         if (finalWorshipType === '前半賛美') { document.getElementById('filter_area3').classList.add('hidden'); setupEarlyProphecyDropdown(); showElement('step_song3', true); } else { showElement('prophecyFootnote', true); }
     }
 
-    // フォーム送信処理（内部データをGAS向けにきれいに再マッピング）
     document.getElementById('worshipForm').addEventListener('submit', async (e) => {
         e.preventDefault(); const submitBtn = document.getElementById('submitBtn'); const loadingMsg = document.getElementById('loadingMsg');
         submitBtn.disabled = true; loadingMsg.classList.remove('hidden');
         const formData = new FormData(e.target); const rawData = Object.fromEntries(formData.entries());
         
-        let songMap = {};
-        let groupName = "";
-
+        let songMap = {}; let groupName = "";
         if (finalWorshipType === '特別賛美') {
             const teamSel = document.getElementById('specialTeamSelect').value;
             groupName = teamSel === '__OTHER__' ? document.getElementById('specialTeamManual').value : teamSel;
-            
-            // 歌集フィルターでその他ならテキスト入力値を、通常ならセレクトの値を採用
             const isManualSong = document.getElementById('book_filterSpecial').value === '__MANUAL__';
             songMap["選曲"] = isManualSong ? document.getElementById('specialSongManual').value : document.getElementById('specialSongSelect').value;
         } else {
             if (rawData.song1) songMap["1"] = rawData.song1;
             if (rawData.song2 && !document.getElementById('step_song2').classList.contains('hidden')) songMap["2"] = rawData.song2;
             
-            const maxNormal = EX_SONG_COUNTS[finalMeetingEvent][finalWorshipType === '前半賛美' ? '前半' : '後半'];
+            const activeDuty = masterData.dynamicDuties.filter(d => d.meeting === finalMeetingEvent && d.type === finalWorshipType)[0];
+            const maxNormal = activeDuty ? activeDuty.maxSongs : 2;
+            
             if (finalWorshipType === '前半賛美') {
                 let activeBranch = document.querySelector('input[name="branch1"]:checked')?.value;
                 let activeBranch2 = document.querySelector('input[name="branch2"]:checked')?.value;
@@ -470,22 +455,8 @@
             }
         }
 
-        const postPayload = {
-            meetingEvent: finalMeetingEvent,
-            worshipType: finalWorshipType, // 前半賛美 / 後半賛美 / 特別賛美
-            singerName: rawData.singerName || "",
-            groupName: groupName,
-            orchestraDetails: rawData.orchestraDetails || "",
-            remarks: rawData.remarks || "",
-            action: 'submit',
-            songMap: songMap
-        };
-
-        try {
-            await fetch(CONFIG.GAS_WEBAPP_URL, { method: 'POST', body: JSON.stringify(postPayload) });
-            alert('選曲連絡が正常に送信され、スプレッドシートへ反映されました！');
-            e.target.reset(); handleMainWorshipTypeChange('');
-        } catch (error) { alert('送信エラーが発生しました。'); } 
+        const postPayload = { meetingEvent: finalMeetingEvent, worshipType: finalWorshipType, singerName: rawData.singerName || "", groupName: groupName, orchestraDetails: rawData.orchestraDetails || "", remarks: rawData.remarks || "", action: 'submit', songMap: songMap };
+        try { await fetch(CONFIG.GAS_WEBAPP_URL, { method: 'POST', body: JSON.stringify(postPayload) }); alert('選曲連絡が正常に送信され、スプレッドシートへ反映されました！'); e.target.reset(); handleMainWorshipTypeChange(''); } catch (error) { alert('送信エラー。'); } 
         finally { submitBtn.disabled = false; loadingMsg.classList.add('hidden'); }
     });
 </script>
