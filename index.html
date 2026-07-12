@@ -258,14 +258,14 @@
             masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true}));
             
             renderSingerDropdown(); renderSpecialTeamDropdown(); buildFilterDropdowns(); initEventListeners();
-        } catch(e) { alert("マスターデータの同期に失敗しました。"); }
+        } catch(e) { alert("マスターデータの初期同期に失敗しました。"); }
     });
 
-    // 初期モーダルを閉じて選択区分を記憶する関数
+    // ★【修正箇所】style.style.display ➔ style.display へタイポを修正！
     function closeInitModal() {
         const val = document.querySelector('input[name="initContactType"]:checked').value;
         document.getElementById('finalContactType').value = val;
-        document.getElementById('initModal').style.style.display = 'none'; // 物理遮断解除
+        document.getElementById('initModal').style.display = 'none'; 
         document.getElementById('initModal').classList.add('hidden');
     }
 
@@ -349,6 +349,7 @@
     function applyAutoSelect(meeting, type, currentSongs) {
         document.getElementById('smartModal').style.display = 'none';
         document.getElementById('manualSelectGroup').classList.add('hidden');
+        
         finalMeetingEvent = meeting; finalWorshipType = type;
         originalSongsMap = currentSongs || {}; 
 
@@ -379,6 +380,7 @@
         updateBookedSongs();
     }
 
+    function closeModalAndReset() { document.getElementById('smartModal').style.display = 'none'; document.getElementById('singerName').value = ""; resetSelectionSection(); }
     function resetSelectionSection() { showElement('selectionSection', false); showElement('autoInfoBar', false); }
     function cleanSongName(name) { if(!name) return ""; return name.replace(/\(変更\)/g, "").replace(/\(オケ有\)/g, "").replace(/\(オケ無\)/g, "").trim(); }
 
