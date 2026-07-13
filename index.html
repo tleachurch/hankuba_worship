@@ -80,8 +80,6 @@
                     <label class="required">チーム名入力（新規追加）</label>
                     <input type="text" id="specialTeamManual" class="form-control" placeholder="チーム名を入力してください">
                 </div>
-                
-                <!-- ★【修正】選択肢のvalue属性をすべて「新しい統一形式」に修正しました -->
                 <div class="form-group">
                     <label class="required">3. 奉仕する聖会・集会</label>
                     <select id="meetingEventSpecial">
@@ -108,7 +106,6 @@
 
             <div id="autoInfoBar" class="info-bar hidden"></div>
 
-            <!-- ★【修正】手動変更ルート側のvalue属性もすべて「新しい統一形式」に修正しました -->
             <div id="manualSelectGroup" class="hidden">
                 <div class="form-group">
                     <label class="required">変更後：奉仕する聖会・集会</label>
@@ -219,7 +216,6 @@
     let originalSongsMap = {};
     let songInputKeys = []; 
 
-    // ★【新設】どんな表記の聖会名が届いても、強制的に「15(水)夜の聖会」という綺麗形に置換するクレンジング関数
     function formatMeetingNameForDisplay(str) {
         if (!str) return "";
         let clean = str.toString().replace(/\s+/g, "");
@@ -335,7 +331,6 @@
         if(defaultVal) targetSelect.value = defaultVal;
     }
 
-    // ★【修正】「特別賛美」を選んだ瞬間、チーム名や聖会の選択を待たずに即座に下の選曲欄を表示させる仕様へ大改造
     function handleMainWorshipTypeChange(type) {
         showElement('route_congregation', type === '会衆賛美'); 
         showElement('route_special', type === '特別賛美');
@@ -585,8 +580,8 @@
     }
 
     function filterDynSongs(idx, defaultVal = "") {
-        const filterVal = document.getElementById(`book_filter_dyn${idx}`).value;
-        const targetSelect = document.getElementById(`song_dyn${idx}`);
+        const filterVal = document.getElementById('book_filter_dyn' + idx).value;
+        const targetSelect = document.getElementById('song_dyn' + idx);
         targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if (!filterVal) return;
         
         const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
@@ -612,7 +607,6 @@
             finalWorshipType = "特別賛美";
         }
 
-        // ★【大改修】セクション2の器自体は、特別賛美が押された段階で最初から100%オープンする
         showElement('selectionSection', true);
         showElement('flow_congregation', !isSpecial);
         showElement('flow_special', isSpecial);
@@ -620,7 +614,6 @@
         if (!isSpecial) {
             renderSongInputs(); 
         } else {
-            // 特別賛美の場合、聖会名かチーム名が空の段階では、GASへの重複チェック通信だけをスルーして待機
             if(!finalMeetingEvent || !document.getElementById('specialTeamSelect').value) return;
         }
 
@@ -656,14 +649,14 @@
                         setupProphecyDropdownDyn(idx, plainSong);
                     } else if (plainSong) {
                         const matchCat = masterData.allSongs.filter(s => s.fullName === plainSong)[0];
-                        if (matchCat) { document.getElementById(`book_filter_dyn${idx}`).value = matchCat.category; filterDynSongs(idx, plainSong); }
+                        if (matchCat) { document.getElementById('book_filter_dyn' + idx).value = matchCat.category; filterDynSongs(idx, plainSong); }
                     }
                 });
                 updateAllSongOptions();
             }
             if (originalSongsMap["備考欄"]) {
                 let bikoVal = originalSongsMap["備考欄"];
-                if (isSpecial) bikoVal = bikoVal.replace(/^オケ[有無]\s*\/\s*/, ""); 
+                bikoVal = bikoVal.replace(/^オケ[有無]\s*\/\s*/, ""); 
                 document.getElementById('remarks').value = bikoVal;
             }
         } catch(e) { console.error(e); }
@@ -681,7 +674,6 @@
 
     function showElement(id, isShow) { const el = document.getElementById(id); if (!el) return; if (isShow) el.classList.remove('hidden'); else el.classList.add('hidden'); }
 
-    // ★【修正】モーダル表示の際にも、クレンジング関数を通して綺麗な表記（15(水)夜の聖会）を生成・表示
     function showCompleteModal(name, songMap) {
         const lines = [];
         const prettyMeeting = formatMeetingNameForDisplay(finalMeetingEvent);
@@ -736,7 +728,7 @@
         } else {
             for (let idx = 0; idx < songInputKeys.length; idx++) {
                 const key = songInputKeys[idx];
-                const el = document.getElementById(`song_dyn${idx}`);
+                const el = document.getElementById('song_dyn' + idx);
                 const val = el ? el.value : "";
                 if (!val || val === '__OTHER__') {
                     alert(`["曲順 ${key}"] の曲が未選択です。`);
