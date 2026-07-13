@@ -11,8 +11,8 @@
         .page-header h1 { margin: 0; font-size: 22px; color: #323130; }
         .sheet-area { padding: 20px; }
         
-        /* ★【修正】不要な影を完全削除し、左右が同じ見た目で美しく閉じるよう、コンテナ自体に境界線（ボーダー）を設定 */
-        .sheet-wrap { overflow: hidden; margin: 0 auto; border: 1px solid #dadce0; border-radius: 4px; }
+        /* ★【大修正】四方の枠線は完全撤去！右端のグリッド線と完全に一致する「左縦線（1px）」だけをスマートに生成 */
+        .sheet-wrap { overflow: hidden; margin: 0 auto; border-left: 1px solid #dadce0; }
         #sheetFrame { border: none; display: block; transform-origin: top left; }
     </style>
 </head>
@@ -22,7 +22,7 @@
     <div class="page-header"><h1>白馬キャンプ 選曲リスト</h1></div>
     <div class="sheet-area">
         <div class="sheet-wrap" id="sheetWrap" style="overflow: hidden; position: relative;">
-            <!-- ★【修正】位置を元のジャスト（top:0, left:0）にリセットしてズレを解消 -->
+            <!-- ★【修正】配置位置を本来のジャスト（top:0, left:0）にリセットして不気味な隙間を撲滅 -->
             <iframe id="sheetFrame" scrolling="no" style="position: absolute; top: 0; left: 0; border: none;"
                 src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQQgvLw2ca6IIzECURZtQv6XkzLvy8xpPfR1N5NmBDG8LOBybvcsIF3QSwN1yB0Pg/pubhtml?gid=298531511&amp;single=true&amp;widget=false&amp;chrome=false&amp;headers=false&amp;range=A1:E120"></iframe>
         </div>
@@ -30,7 +30,7 @@
 </div>
 
 <script>
-    // ★【修正】元の適正幅「860」にジャストリセット
+    // ★【修正】横幅の基準値をジャストサイズの「860」にリセット
     const BASE_WIDTH = 860;
     // 表示高さ(px)。range=A1:E120(現在約81行+追加余裕)が収まる高さ。
     const BASE_HEIGHT = 2900;
