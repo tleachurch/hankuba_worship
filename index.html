@@ -143,8 +143,9 @@
             <div id="flow_special" class="hidden">
                 <div class="form-group">
                     <label class="required">特別賛美 選曲（1曲のみ）</label>
+                    <input type="text" id="specialSongSearch" class="form-control" placeholder="曲名の一部を入力して全歌集から検索（例: 恵み）" style="margin-bottom:8px;">
                     <div class="song-filter-group"><select id="book_filterSpecial" onchange="filterSongsSpecial()"><option value="">歌集を選択</option></select></div>
-                    <select id="specialSongSelect" class="form-control"><option value="">まず歌集を選択してください</option></select>
+                    <select id="specialSongSelect" class="form-control"><option value="">まず歌集を選択するか、曲名で検索してください</option></select>
                     <input type="text" id="specialSongManual" class="form-control hidden" style="margin-top:8px;" placeholder="曲名を直接手入力してください">
                 </div>
             </div>
@@ -237,6 +238,8 @@
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
+        // ③ データ読込完了を待たずにリスナーを登録(読込中の初回クリックが無反応になる問題の修正)
+        initEventListeners();
         try {
             // キャッシュ仕様: バージョン付きキー+24時間で失効。
             // (旧実装は無期限のため、全曲タブ更新が一度キャッシュした端末に永久反映されなかった)
@@ -290,7 +293,10 @@
                 } catch(storageErr) { /* ストレージ不可環境でも動作継続 */ }
             }
 
-            renderSingerDropdown(); renderSpecialTeamDropdown(); buildSpecialFilterDropdown(); initEventListeners();
+            renderSingerDropdown(); renderSpecialTeamDropdown(); buildSpecialFilterDropdown();
+            // ③ 読込中に区分が選択されていた場合、完了時点で後続質問を描画し直す
+            const checkedType = document.querySelector('input[name="displayWorshipType"]:checked');
+            if (checkedType) handleMainWorshipTypeChange(checkedType.value);
         } catch(e) { 
             console.error(e);
             alert("マスターデータの同期に失敗しました。\n[詳細原因]: " + e.message + "\n\n※ブラウザを再読み込みするか、GAS側が正しくデプロイ更新されているかご確認ください。"); 
@@ -326,6 +332,8 @@
 
     function filterSongsSpecial(defaultVal = "") {
         const filterVal = document.getElementById('book_filterSpecial').value;
+        // ⑦ 歌集絞り込みを使ったら曲名検索はクリア(両方式の混在を防ぐ)
+        if (filterVal) document.getElementById('specialSongSearch').value = "";
         if (filterVal === '__MANUAL__') { showElement('specialSongSelect', false); showElement('specialSongManual', true); if(defaultVal) document.getElementById('specialSongManual').value = defaultVal; return; }
         else { showElement('specialSongSelect', true); showElement('specialSongManual', false); }
         const targetSelect = document.getElementById('specialSongSelect');
@@ -338,10 +346,30 @@
         if(defaultVal) targetSelect.value = defaultVal;
     }
 
+    // ⑦ 特別賛美のみ: 曲名の部分一致で全歌集から絞り込み表示
+    function handleSpecialSongSearch() {
+        const term = document.getElementById('specialSongSearch').value.trim().toLowerCase();
+        const sel = document.getElementById('specialSongSelect');
+        showElement('specialSongSelect', true); showElement('specialSongManual', false);
+        if (!term) {
+            sel.innerHTML = '<option value="">まず歌集を選択するか、曲名で検索してください</option>';
+            return;
+        }
+        document.getElementById('book_filterSpecial').value = ""; // 歌集絞り込みを解除
+        const hits = masterData.allSongs.filter(s => (s.title || '').toLowerCase().indexOf(term) >= 0);
+        sel.innerHTML = `<option value="">検索結果（${hits.length}件）から選択</option>`;
+        hits.slice(0, 200).forEach(song => {
+            const opt = document.createElement('option'); opt.value = song.fullName; opt.textContent = `${song.category} ${song.num} ${song.title}`;
+            sel.appendChild(opt);
+        });
+    }
+
     function handleMainWorshipTypeChange(type) {
         showElement('route_congregation', type === '会衆賛美'); 
         showElement('route_special', type === '特別賛美');
         document.getElementById('manualSelectGroup').classList.add('hidden');
+        // ⑥ 区分を切り替えたら前回の確定情報バーを必ず消す(特別賛美切替時に残る問題の修正)
+        showElement('autoInfoBar', false);
         
         if (type === '特別賛美') {
             updateBookedSongs(); 
@@ -467,7 +495,12 @@
                 
                 const songClean = cleanSongName(opt.value);
 
-                if (cleanBookedSongs.includes(songClean)) {
+                // 自分の欄で現在選択中の曲、および変更連絡での自分の既存曲は無効化しない
+                const ownOriginal = cleanSongName(originalSongsMap[key] || "");
+                if (opt.value === select.value || (ownOriginal && songClean === ownOriginal)) {
+                    opt.disabled = false;
+                    opt.textContent = originalText;
+                } else if (cleanBookedSongs.includes(songClean)) {
                     opt.disabled = true;
                     opt.textContent = originalText + " (既に入力済み)";
                 } else if (otherSelectedCleans.includes(songClean)) {
@@ -544,6 +577,9 @@
             if (e.target.value === "__OTHER__") {
                 showElement(`filter_area_dyn${idx}`, true);
                 select.innerHTML = '<option value="">まず歌集を選択してください</option>';
+                // ②「その他」モードに切り替えても固定曲を再選択できるよう選択肢に残す
+                const fx = document.createElement('option'); fx.value = FIXED_SONG; fx.textContent = FIXED_SONG;
+                select.appendChild(fx);
                 select.onchange = () => { updateAllSongOptions(); };
             }
             updateAllSongOptions();
@@ -597,6 +633,12 @@
         const filterVal = document.getElementById('book_filter_dyn' + idx).value;
         const targetSelect = document.getElementById('song_dyn' + idx);
         targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if (!filterVal) return;
+        
+        // ② 固定行は歌集絞り込み中も固定曲を選択肢の先頭に残す
+        if ((songInputKeys[idx] || '').indexOf('固定') >= 0) {
+            const fx = document.createElement('option'); fx.value = FIXED_SONG; fx.textContent = FIXED_SONG;
+            targetSelect.appendChild(fx);
+        }
         
         const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
         const cleanDefault = cleanSongName(defaultVal);
@@ -657,6 +699,12 @@
                     document.getElementById('specialSongSelect').innerHTML = '<option value="">まず歌集を選択してください</option>';
                 }
             } else {
+                // ⑤ 変更連絡では、サーバーから取得した最新の入力済み曲(songsMap)でプレフィル元を上書き
+                //   (ページ読込時のdynamicDutiesが、同一セッション中の送信により古くなる問題への対応)
+                const isNewModeCong = document.getElementById('finalContactType').value === '新規';
+                if (!isNewModeCong && result.songsMap && Object.keys(result.songsMap).length) {
+                    originalSongsMap = result.songsMap;
+                }
                 songInputKeys.forEach((key, idx) => {
                     const plainSong = cleanSongName(originalSongsMap[key] || "");
                     if (key.indexOf('固定') >= 0) {
@@ -686,6 +734,7 @@
         document.getElementById('specialTeamSelect').addEventListener('change', (e) => { showElement('specialTeamManualArea', e.target.value === '__OTHER__'); updateBookedSongs(); });
         document.getElementById('specialTeamManual').addEventListener('change', updateBookedSongs);
         document.getElementById('meetingEventSpecial').addEventListener('change', updateBookedSongs);
+        document.getElementById('specialSongSearch').addEventListener('input', handleSpecialSongSearch); // ⑦
     }
 
     function showElement(id, isShow) { const el = document.getElementById(id); if (!el) return; if (isShow) el.classList.remove('hidden'); else el.classList.add('hidden'); }
@@ -784,6 +833,14 @@
             originalSongsMap = {};
             songInputKeys = [];
             document.getElementById('finalContactType').value = "新規";
+            
+            // ⑤ 同一セッション内で続けて変更連絡する場合に備え、担当マスタを再取得(全曲はキャッシュ利用)
+            try {
+                const fresh = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadInit', skipSongs: 'true' }, 'cb_refresh');
+                masterData.dynamicDuties = fresh.dynamicDuties || masterData.dynamicDuties;
+                masterData.specialTeams = fresh.specialTeams || masterData.specialTeams;
+                renderSpecialTeamDropdown();
+            } catch (refreshErr) { /* 失敗しても次回ページ読込で最新化される */ }
             
             const initModal = document.getElementById('initModal');
             initModal.style.display = 'flex';
