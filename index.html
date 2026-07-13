@@ -39,6 +39,8 @@
         .btn-modal-no { background-color: #ffffff; color: #323130; border: 1px solid #a19f9d; padding: 10px 20px; font-size: 14px; border-radius: 4px; cursor: pointer; }
         .btn-modal-option { background-color: #f3f2f1; color: #0078d4; border: 1px solid #0078d4; padding: 12px; font-size: 14px; font-weight: 600; border-radius: 4px; cursor: pointer; text-align: left; width: 100%; margin-bottom: 8px; }
         .btn-modal-option:hover { background-color: #f3f9fe; }
+        .btn-delete { background-color: #a4262c; color: #ffffff; border: none; padding: 10px 16px; font-size: 14px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; }
+        .btn-delete:hover { background-color: #8a1f24; }
     </style>
 </head>
 <body>
@@ -148,6 +150,8 @@
                     <select id="specialSongSelect" class="form-control"><option value="">まず歌集を選択するか、曲名で検索してください</option></select>
                     <input type="text" id="specialSongManual" class="form-control hidden" style="margin-top:8px;" placeholder="曲名を直接手入力してください">
                 </div>
+                <!-- ① 変更連絡で登録済みエントリがある場合のみ表示。押下で確認ポップ→シートから削除 -->
+                <button type="button" class="btn-delete hidden" id="deleteSpecialBtn" onclick="openDeleteConfirm()">🗑 この聖会の登録内容を削除する</button>
             </div>
         </div>
 
@@ -187,6 +191,32 @@
     </div>
 </div>
 
+<div id="overwriteWarnModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="border-top-color: #ca5010;">
+        <div class="modal-header"><div class="modal-title">⚠ 既に登録があります</div></div>
+        <div class="modal-body" id="overwriteWarnBody"></div>
+        <div class="modal-footer">
+            <div class="modal-btn-group">
+                <button type="button" class="btn-modal-no" onclick="continueAsNewOverwrite()">新規のまま続ける（上書き）</button>
+                <button type="button" class="btn-modal-yes" style="background-color: #ca5010;" onclick="switchToChangeMode()">変更として続ける</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="deleteConfirmModal" class="modal-overlay" style="display: none;">
+    <div class="modal-box" style="border-top-color: #a4262c;">
+        <div class="modal-header"><div class="modal-title">🗑 削除の確認</div></div>
+        <div class="modal-body" id="deleteConfirmBody"></div>
+        <div class="modal-footer">
+            <div class="modal-btn-group">
+                <button type="button" class="btn-modal-no" onclick="document.getElementById('deleteConfirmModal').style.display='none'">いいえ</button>
+                <button type="button" class="btn-modal-yes" style="background-color: #a4262c;" onclick="executeSpecialDelete()">はい、削除する</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="completeModal" class="modal-overlay" style="display: none;">
     <div class="modal-box">
         <div class="modal-header"><div class="modal-title">✅ 送信完了</div></div>
@@ -215,6 +245,7 @@
     let finalWorshipType = "";
     let finalMeetingEvent = "";
     let originalSongsMap = {};
+    let pendingBookedResult = null; // ③ 上書き警告時にloadBooked結果を保持し「変更として続ける」で再利用
     let songInputKeys = []; 
 
     function formatMeetingNameForDisplay(str) {
@@ -267,12 +298,6 @@
             masterData.specialTeams = result.specialTeams || [];
             
             const rawProphecy = result.earlyProphecySongs || [];
-            masterData.earlyProphecySongs = rawProphecy.map(song => {
-                let prefix = (song.code && song.code.startsWith('K')) ? '風のひびき' : 'やすらぎの歌';
-                // 歌集コードのゼロ埋め(K01/Y01)は先頭ゼロを除去し、シート既存記載「9集」等と表記を一致させる
-                let volume = song.code ? song.code.replace(/^[KY]/, '').replace(/^0+/, '') : '';
-                return `${prefix} ${volume}集 ${song.num || ''} ${song.title || ''}`;
-            });
 
             const rawAllSongs = result.allSongs || [];
             if (rawAllSongs.length > 0) {
@@ -292,6 +317,22 @@
                     localStorage.setItem('hakuba_cached_at_' + CACHE_VER, String(Date.now()));
                 } catch(storageErr) { /* ストレージ不可環境でも動作継続 */ }
             }
+
+            // ① 預言後の曲を全曲リストの同一(歌集コード,番号)エントリに正規化する。
+            //   預言後タブと全曲タブで同じ曲のタイトル表記が揺れており(例:「唯一人」vs「唯一」)、
+            //   fullName文字列のままだと同一曲を重複検知できないため、全曲側の表記に統一する。
+            //   ※allSongs構築後に実行する必要があるためこの位置に配置。
+            const buildFull = (code, num) => {
+                let prefix = (code && code.startsWith('K')) ? '風のひびき' : 'やすらぎの歌';
+                let volume = code ? code.replace(/^[KY]/, '').replace(/^0+/, '') : '';
+                return { category: `${prefix} ${volume}集`, volume: volume };
+            };
+            masterData.earlyProphecySongs = rawProphecy.map(song => {
+                const code = song.code || ''; const num = (song.num || '').toString();
+                const b = buildFull(code, num);
+                const match = (masterData.allSongs || []).filter(s => s.category === b.category && String(s.num) === num)[0];
+                return match ? match.fullName : `${b.category} ${num} ${song.title || ''}`;
+            });
 
             renderSingerDropdown(); renderSpecialTeamDropdown(); buildSpecialFilterDropdown();
             // ③ 読込中に区分が選択されていた場合、完了時点で後続質問を描画し直す
@@ -370,6 +411,14 @@
         document.getElementById('manualSelectGroup').classList.add('hidden');
         // ⑥ 区分を切り替えたら前回の確定情報バーを必ず消す(特別賛美切替時に残る問題の修正)
         showElement('autoInfoBar', false);
+        // ① 区分切替時は削除ボタンも非表示に戻す
+        showElement('deleteSpecialBtn', false);
+        // ③ 会衆賛美以外に切り替えたら動的入力欄を破棄
+        //   (非表示のままrequiredなselectが残ると、ブラウザが送信を静かにブロックし送信ボタンが無反応になる)
+        if (type !== '会衆賛美') {
+            document.getElementById('dynamicSongArea').innerHTML = '';
+            songInputKeys = [];
+        }
         
         if (type === '特別賛美') {
             updateBookedSongs(); 
@@ -386,10 +435,7 @@
         const singerName = document.getElementById('singerName').value;
         if (!singerName) { resetSelectionSection(); return; }
 
-        // 【③新規ガード】新規連絡では、シートに同名の担当があっても自動判定モーダルを出さず、
-        // 過去データの復元(プレフィル)も行わない。聖会・区分は手動選択に進む。
-        if (document.getElementById('finalContactType').value === '新規') { applyManualSelect(); return; }
-
+        // ③ 新規・変更とも自動判定ポップを表示(会衆賛美の誤選択防止)。プレフィルの有無は各適用関数側で区分により制御。
         const matches = [];
         masterData.dynamicDuties.forEach((d, i) => { if (d.team === singerName) matches.push({ duty: d, index: i }); });
         const modal = document.getElementById('smartModal');
@@ -402,7 +448,7 @@
             body.innerHTML = `あなたは <strong>【${prettyMeeting} の ${duty.type} (通常曲数:${duty.maxSongs}曲)】</strong> のご担当でお間違いないですか？`;
             footer.innerHTML = `
                 <div class="modal-btn-group">
-                    <button type="button" class="btn-modal-no" onclick="applyManualSelect()">いいえ(変更)</button>
+                    <button type="button" class="btn-modal-no" onclick="applyManualSelect()">いいえ（別の聖会・区分を手動で選ぶ）</button>
                     <button type="button" class="btn-modal-yes" onclick="applyAutoSelect(${matches[0].index})">はい</button>
                 </div>`;
             modal.style.display = 'flex';
@@ -413,7 +459,7 @@
                 html += `<button type="button" class="btn-modal-option" onclick="applyAutoSelect(${m.index})">📅 ${prettyMeeting} (${m.duty.type} - 通常曲数:${m.duty.maxSongs}曲)</button>`;
             });
             body.innerHTML = html;
-            footer.innerHTML = `<button type="button" class="btn-modal-no" style="width:100%" onclick="applyManualSelect()">一覧にないため手動(変更)で選ぶ</button>`;
+            footer.innerHTML = `<button type="button" class="btn-modal-no" style="width:100%" onclick="applyManualSelect()">一覧にないため別の聖会・区分を手動で選ぶ</button>`;
             modal.style.display = 'flex';
         } else {
             applyManualSelect();
@@ -551,6 +597,10 @@
             }
 
             const f = document.getElementById(`book_filter_dyn${idx}`);
+            // ② 固定行は「歌集・集数を選択」の直下に固定曲の再選択項目を配置
+            if (isFixed) {
+                const fx = document.createElement('option'); fx.value = '__FIXED__'; fx.textContent = FIXED_SONG; f.appendChild(fx);
+            }
             if(masterData.bookCategories) {
                 masterData.bookCategories.forEach(cat => { const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; f.appendChild(opt); });
             }
@@ -577,9 +627,6 @@
             if (e.target.value === "__OTHER__") {
                 showElement(`filter_area_dyn${idx}`, true);
                 select.innerHTML = '<option value="">まず歌集を選択してください</option>';
-                // ②「その他」モードに切り替えても固定曲を再選択できるよう選択肢に残す
-                const fx = document.createElement('option'); fx.value = FIXED_SONG; fx.textContent = FIXED_SONG;
-                select.appendChild(fx);
                 select.onchange = () => { updateAllSongOptions(); };
             }
             updateAllSongOptions();
@@ -632,13 +679,16 @@
     function filterDynSongs(idx, defaultVal = "") {
         const filterVal = document.getElementById('book_filter_dyn' + idx).value;
         const targetSelect = document.getElementById('song_dyn' + idx);
-        targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if (!filterVal) return;
-        
-        // ② 固定行は歌集絞り込み中も固定曲を選択肢の先頭に残す
-        if ((songInputKeys[idx] || '').indexOf('固定') >= 0) {
+        // ② フィルタで固定曲項目(__FIXED__)が選ばれたら、選曲欄を固定曲で確定
+        if (filterVal === '__FIXED__') {
+            targetSelect.innerHTML = '';
             const fx = document.createElement('option'); fx.value = FIXED_SONG; fx.textContent = FIXED_SONG;
             targetSelect.appendChild(fx);
+            targetSelect.value = FIXED_SONG;
+            updateAllSongOptions();
+            return;
         }
+        targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if (!filterVal) return;
         
         const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
         const cleanDefault = cleanSongName(defaultVal);
@@ -683,6 +733,8 @@
                 // 【③新規ガード】新規連絡では既存入力を復元しない
                 const isNewMode = document.getElementById('finalContactType').value === '新規';
                 const entry = isNewMode ? null : (result.specialEntries || []).filter(en => en.team === selTeam)[0];
+                // ① 変更連絡で登録済みエントリがある場合のみ削除ボタンを表示
+                showElement('deleteSpecialBtn', !!entry);
                 originalSongsMap = entry ? { "選曲": entry.song || "", "備考欄": entry.remarks || "" } : {};
 
                 let existSong = originalSongsMap["選曲"] || "";
@@ -702,6 +754,18 @@
                 // ⑤ 変更連絡では、サーバーから取得した最新の入力済み曲(songsMap)でプレフィル元を上書き
                 //   (ページ読込時のdynamicDutiesが、同一セッション中の送信により古くなる問題への対応)
                 const isNewModeCong = document.getElementById('finalContactType').value === '新規';
+
+                // ③安全版: 新規なのにこの聖会・区分に既登録がある場合は上書き警告を表示
+                //   判定は固定曲を除く選曲行・備考欄のいずれかに値があるか(固定曲は送信時のみ書かれ常に存在するため除外)
+                if (isNewModeCong && result.songsMap) {
+                    const hasExisting = Object.keys(result.songsMap).some(k =>
+                        k.indexOf('固定') < 0 && (result.songsMap[k] || '').toString().trim() !== '');
+                    if (hasExisting) {
+                        pendingBookedResult = result; // 「変更として続ける」で再利用
+                        openOverwriteWarn();
+                    }
+                }
+
                 if (!isNewModeCong && result.songsMap && Object.keys(result.songsMap).length) {
                     originalSongsMap = result.songsMap;
                 }
@@ -724,6 +788,47 @@
                 document.getElementById('remarks').value = bikoVal;
             }
         } catch(e) { console.error(e); }
+    }
+
+    // ③ 上書き警告ポップ制御(会衆賛美・新規で既登録がある場合に表示)
+    function openOverwriteWarn() {
+        const prettyMeeting = formatMeetingNameForDisplay(finalMeetingEvent);
+        document.getElementById('overwriteWarnBody').innerHTML =
+            `<strong>${prettyMeeting}【${finalWorshipType}】</strong>には既に選曲が登録されています。<br><br>「新規のまま続ける」と、送信時にこの聖会の既存の選曲が上書きされます。<br>過去の内容を引き継いで直したい場合は「変更として続ける」を選んでください。`;
+        document.getElementById('overwriteWarnModal').style.display = 'flex';
+    }
+    function continueAsNewOverwrite() {
+        // 新規のまま: 既存値は復元せず空欄のまま。送信で上書きされる。
+        document.getElementById('overwriteWarnModal').style.display = 'none';
+        pendingBookedResult = null;
+    }
+    function switchToChangeMode() {
+        // 変更に切替え: 連絡区分を変更にし、既存の選曲をプレフィルして入力欄を復元
+        document.getElementById('overwriteWarnModal').style.display = 'none';
+        document.getElementById('finalContactType').value = '変更';
+        const infoBar = document.getElementById('autoInfoBar');
+        const prettyMeeting = formatMeetingNameForDisplay(finalMeetingEvent);
+        infoBar.innerHTML = `✅ 確定情報 ➔ 連絡区分: <strong>変更</strong> / 担当聖会: <strong>${prettyMeeting} 【${finalWorshipType}】</strong>`;
+        infoBar.classList.remove('hidden');
+
+        const result = pendingBookedResult;
+        pendingBookedResult = null;
+        if (result && result.songsMap && Object.keys(result.songsMap).length) {
+            originalSongsMap = result.songsMap;
+            songInputKeys.forEach((key, idx) => {
+                const plainSong = cleanSongName(originalSongsMap[key] || "");
+                if (key.indexOf('固定') >= 0) {
+                    setupFixedDropdownDyn(idx, plainSong);
+                } else if (key.indexOf('預言後') >= 0) {
+                    setupProphecyDropdownDyn(idx, plainSong);
+                } else if (plainSong) {
+                    const matchCat = masterData.allSongs.filter(s => s.fullName === plainSong)[0];
+                    if (matchCat) { document.getElementById('book_filter_dyn' + idx).value = matchCat.category; filterDynSongs(idx, plainSong); }
+                }
+            });
+            updateAllSongOptions();
+            if (originalSongsMap["備考欄"]) document.getElementById('remarks').value = originalSongsMap["備考欄"];
+        }
     }
 
     function initEventListeners() {
@@ -750,6 +855,48 @@
     }
     
     function closeCompleteModal() { document.getElementById('completeModal').style.display = 'none'; }
+
+    // ① 特別賛美の削除(変更連絡で登録済みエントリがある場合のみボタンが表示される)
+    function getSelectedSpecialTeam() {
+        const teamSelVal = document.getElementById('specialTeamSelect').value;
+        return teamSelVal === '__OTHER__' ? document.getElementById('specialTeamManual').value.trim() : teamSelVal;
+    }
+    function openDeleteConfirm() {
+        const team = getSelectedSpecialTeam();
+        const prettyMeeting = formatMeetingNameForDisplay(finalMeetingEvent);
+        document.getElementById('deleteConfirmBody').innerHTML =
+            `<strong>${prettyMeeting}【特別賛美】/ ${team}</strong><br>の登録内容(チーム名・曲・備考)をシートから削除します。<br><br>本当に削除してよろしいでしょうか？`;
+        document.getElementById('deleteConfirmModal').style.display = 'flex';
+    }
+    async function executeSpecialDelete() {
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+        const btn = document.getElementById('deleteSpecialBtn');
+        btn.disabled = true;
+        try {
+            await fetch(CONFIG.GAS_WEBAPP_URL, { method: 'POST', body: JSON.stringify({
+                action: 'deleteSpecial',
+                meetingEvent: finalMeetingEvent,
+                worshipType: '特別賛美',
+                groupName: getSelectedSpecialTeam()
+            }) });
+            alert('削除しました。');
+            document.getElementById('worshipForm').reset();
+            handleMainWorshipTypeChange('');
+            originalSongsMap = {}; songInputKeys = [];
+            showElement('deleteSpecialBtn', false);
+            document.getElementById('finalContactType').value = "新規";
+            try {
+                const fresh = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadInit', skipSongs: 'true' }, 'cb_refresh_del');
+                masterData.dynamicDuties = fresh.dynamicDuties || masterData.dynamicDuties;
+                masterData.specialTeams = fresh.specialTeams || masterData.specialTeams;
+                renderSpecialTeamDropdown();
+            } catch (refreshErr) { /* 次回ページ読込で最新化 */ }
+            const initModal = document.getElementById('initModal');
+            initModal.style.display = 'flex'; initModal.classList.remove('hidden');
+            document.querySelector('input[name="initContactType"][value="新規"]').checked = true;
+        } catch (err) { alert('削除に失敗しました。'); }
+        finally { btn.disabled = false; }
+    }
     function copyCompleteText() {
         const ta = document.getElementById('completeTextDisplay');
         ta.select(); ta.setSelectionRange(0, 99999);
