@@ -10,8 +10,10 @@
         .page-header { padding: 24px 30px; border-bottom: 1px solid #edebe9; }
         .page-header h1 { margin: 0; font-size: 22px; color: #323130; }
         .sheet-area { padding: 20px; }
-        .sheet-wrap { overflow: hidden; margin: 0 auto; }
-        #sheetFrame { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 4px; display: block; transform-origin: top left; }
+        
+        /* ★【修正】不要な影を完全削除し、左右が同じ見た目で美しく閉じるよう、コンテナ自体に境界線（ボーダー）を設定 */
+        .sheet-wrap { overflow: hidden; margin: 0 auto; border: 1px solid #dadce0; border-radius: 4px; }
+        #sheetFrame { border: none; display: block; transform-origin: top left; }
     </style>
 </head>
 <body>
@@ -20,16 +22,16 @@
     <div class="page-header"><h1>白馬キャンプ 選曲リスト</h1></div>
     <div class="sheet-area">
         <div class="sheet-wrap" id="sheetWrap" style="overflow: hidden; position: relative;">
-            <!-- ★【修正】left: 4px; top: 2px; に変更し、隠れていた左の太線と上の枠線を枠内に引き出しました -->
-            <iframe id="sheetFrame" scrolling="no" style="position: absolute; top: 2px; left: 4px; border: none;"
+            <!-- ★【修正】位置を元のジャスト（top:0, left:0）にリセットしてズレを解消 -->
+            <iframe id="sheetFrame" scrolling="no" style="position: absolute; top: 0; left: 0; border: none;"
                 src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQQgvLw2ca6IIzECURZtQv6XkzLvy8xpPfR1N5NmBDG8LOBybvcsIF3QSwN1yB0Pg/pubhtml?gid=298531511&amp;single=true&amp;widget=false&amp;chrome=false&amp;headers=false&amp;range=A1:E120"></iframe>
         </div>
     </div>
 </div>
 
 <script>
-    // ★【修正】左にずらした分の余白（4px）を計算に入れ、見切れないように実寸幅を「865」に少し広げました。
-    const BASE_WIDTH = 865;
+    // ★【修正】元の適正幅「860」にジャストリセット
+    const BASE_WIDTH = 860;
     // 表示高さ(px)。range=A1:E120(現在約81行+追加余裕)が収まる高さ。
     const BASE_HEIGHT = 2900;
 
