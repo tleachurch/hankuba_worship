@@ -150,8 +150,6 @@
                     <select id="specialSongSelect" class="form-control"><option value="">まず歌集を選択するか、曲名で検索してください</option></select>
                     <input type="text" id="specialSongManual" class="form-control hidden" style="margin-top:8px;" placeholder="曲名を直接手入力してください">
                 </div>
-                <!-- ① 変更連絡で登録済みエントリがある場合のみ表示。押下で確認ポップ→シートから削除 -->
-                <button type="button" class="btn-delete hidden" id="deleteSpecialBtn" onclick="openDeleteConfirm()">🗑 この聖会の登録内容を削除する</button>
             </div>
         </div>
 
@@ -160,6 +158,8 @@
             <textarea id="completeText" class="form-control hidden" rows="1" readonly></textarea>
             <button type="submit" class="btn-submit" id="submitBtn">送信</button>
             <span id="loadingMsg" class="loading-msg hidden">データを送信中...</span>
+            <!-- ① 変更連絡で登録済みエントリがある場合のみ表示。押下で確認ポップ→シートから削除 -->
+            <button type="button" class="btn-delete hidden" id="deleteSpecialBtn" onclick="openDeleteConfirm()">🗑 この聖会の登録内容を削除する</button>
         </div>
     </form>
 </div>
@@ -344,9 +344,16 @@
         }
     });
 
+    // 送信ボタンのラベルを連絡区分に応じて切替(変更連絡なら「この情報に変更する」)
+    function updateSubmitButtonLabel() {
+        const isChange = document.getElementById('finalContactType').value === '変更';
+        document.getElementById('submitBtn').textContent = isChange ? 'この情報に変更する' : '送信';
+    }
+
     function closeInitModal() {
         const val = document.querySelector('input[name="initContactType"]:checked').value;
         document.getElementById('finalContactType').value = val;
+        updateSubmitButtonLabel();
         document.getElementById('initModal').style.display = 'none';
         document.getElementById('initModal').classList.add('hidden');
     }
@@ -806,6 +813,7 @@
         // 変更に切替え: 連絡区分を変更にし、既存の選曲をプレフィルして入力欄を復元
         document.getElementById('overwriteWarnModal').style.display = 'none';
         document.getElementById('finalContactType').value = '変更';
+        updateSubmitButtonLabel();
         const infoBar = document.getElementById('autoInfoBar');
         const prettyMeeting = formatMeetingNameForDisplay(finalMeetingEvent);
         infoBar.innerHTML = `✅ 確定情報 ➔ 連絡区分: <strong>変更</strong> / 担当聖会: <strong>${prettyMeeting} 【${finalWorshipType}】</strong>`;
@@ -885,6 +893,7 @@
             originalSongsMap = {}; songInputKeys = [];
             showElement('deleteSpecialBtn', false);
             document.getElementById('finalContactType').value = "新規";
+            updateSubmitButtonLabel();
             try {
                 const fresh = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadInit', skipSongs: 'true' }, 'cb_refresh_del');
                 masterData.dynamicDuties = fresh.dynamicDuties || masterData.dynamicDuties;
@@ -980,6 +989,7 @@
             originalSongsMap = {};
             songInputKeys = [];
             document.getElementById('finalContactType').value = "新規";
+            updateSubmitButtonLabel();
             
             // ⑤ 同一セッション内で続けて変更連絡する場合に備え、担当マスタを再取得(全曲はキャッシュ利用)
             try {
