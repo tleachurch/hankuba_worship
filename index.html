@@ -23,7 +23,7 @@
         .radio-item input { margin-right: 10px; }
         .footnote { font-size: 13px; color: #a4262c; margin-top: 6px; font-weight: bold; }
         .btn-submit { background-color: #0078d4; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-submit:hover { background-color: #106ebe; }
+        .btn-submit:hover { background-color: #005a9e; }
         .hidden { display: none !important; }
         .loading-msg { color: #0078d4; font-size: 14px; font-style: italic; }
         .info-bar { background-color: #f3f2f1; padding: 12px; border-left: 4px solid #0078d4; font-size: 13px; margin-bottom: 20px; font-weight: 600; }
@@ -47,6 +47,9 @@
     <div class="form-header">
         <h1>白馬キャンプ賛美選曲（コーラス）連絡フォーム</h1>
         <p>選曲と同時にまとめて連絡する場合は、こちらのフォームでまとめて送ることができます。</p>
+        <p style="margin-top: 10px; font-size: 14px; font-weight: bold;">
+            <a href="https://tleachurch.github.io/hakuba_worship/list.html" target="_blank" rel="noopener" style="color: #0078d4; text-decoration: underline;">選曲一覧はこちら</a>
+        </p>
     </div>
 
     <form id="worshipForm">
@@ -689,7 +692,6 @@
             const isManualSong = document.getElementById('book_filterSpecial').value === '__MANUAL__';
             let specSong = isManualSong ? document.getElementById('specialSongManual').value : document.getElementById('specialSongSelect').value;
 
-            // ★【オケ無の付記を完全廃止】オケ有のときだけ (オケ有) をつける
             let okeType = rawData.okeType || "オケ無";
             if (okeType === "オケ有") {
                 specSong = cleanSongName(specSong) + '(オケ有)';
@@ -703,7 +705,7 @@
                 const el = document.getElementById(`song_dyn${idx}`);
                 const val = el ? el.value : "";
                 if (!val || val === '__OTHER__') {
-                    alert(`「曲順 ${key}」の曲が未選択です。`);
+                    alert(`["曲順 ${key}"] の曲が未選択です。`);
                     submitBtn.disabled = false; loadingMsg.classList.add('hidden');
                     return;
                 }
@@ -721,7 +723,7 @@
             const displayName = finalWorshipType === '特別賛美' ? groupName : (rawData.singerName || "");
             showCompleteModal(displayName, songMap); 
             
-            // 完全初期化とポップアップの再起動
+            // 完全初期化
             e.target.reset(); 
             handleMainWorshipTypeChange('');
             originalSongsMap = {};
