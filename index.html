@@ -213,6 +213,19 @@
     let originalSongsMap = {};
     let songInputKeys = []; 
 
+    function fetchJSONP(url, params, callbackName) {
+        return new Promise((resolve, reject) => {
+            window[callbackName] = function(data) { resolve(data); document.getElementById(scriptId).remove(); delete window[callbackName]; };
+            const scriptId = 'jsonp_' + Date.now() + Math.floor(Math.random()*1000);
+            const script = document.createElement('script'); script.id = scriptId;
+            let queryParams = { callback: callbackName, ...params };
+            let queryString = Object.keys(queryParams).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(queryParams[k])).join('&');
+            script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + queryString;
+            script.onerror = () => { reject(new Error('通信失敗：GAS側が反応していません。デプロイが正常か確認してください。')); document.getElementById(scriptId).remove(); delete window[callbackName]; };
+            document.body.appendChild(script);
+        });
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
         try {
             const cachedSongs = localStorage.getItem('hakuba_cached_songs');
@@ -220,30 +233,41 @@
             let skipSongsParam = "false";
 
             if (cachedSongs && cachedCats) {
-                masterData.allSongs = JSON.parse(cachedSongs);
-                masterData.bookCategories = JSON.parse(cachedCats);
-                skipSongsParam = "true"; 
+                try {
+                    masterData.allSongs = JSON.parse(cachedSongs);
+                    masterData.bookCategories = JSON.parse(cachedCats);
+                    skipSongsParam = "true"; 
+                } catch(cacheErr) {
+                    localStorage.removeItem('hakuba_cached_songs');
+                    localStorage.removeItem('hakuba_cached_cats');
+                    skipSongsParam = "false";
+                }
             }
 
             const result = await fetchJSONP(CONFIG.GAS_WEBAPP_URL, { action: 'loadInit', skipSongs: skipSongsParam }, 'cb_init');
             
-            masterData.singers = result.singers;
+            masterData.singers = result.singers || [];
             masterData.dynamicDuties = result.dynamicDuties || [];
             masterData.specialTeams = result.specialTeams || [];
-            masterData.earlyProphecySongs = result.earlyProphecySongs.map(song => {
-                let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
-                let volume = song.code.replace(/^[KY]/, '');
-                return `${prefix} ${volume}集 ${song.num} ${song.title}`;
+            
+            // ★【フリーズガード①】データが万が一空っぽで届いても絶対に落ちないように保護
+            const rawProphecy = result.earlyProphecySongs || [];
+            masterData.earlyProphecySongs = rawProphecy.map(song => {
+                let prefix = (song.code && song.code.startsWith('K')) ? '風のひびき' : 'やすらぎの歌';
+                let volume = song.code ? song.code.replace(/^[KY]/, '') : '';
+                return `${prefix} ${volume}集 ${song.num || ''} ${song.title || ''}`;
             });
 
-            if (skipSongsParam === "false" && result.allSongs && result.allSongs.length > 0) {
+            // ★【フリーズガード②】GASが「古い別AI版」のままで、allSongsが丸ごと届いた場合でも全自動で吸収して動くように対応
+            const rawAllSongs = result.allSongs || [];
+            if (rawAllSongs.length > 0) {
                 let categories = new Set();
-                masterData.allSongs = result.allSongs.map(song => {
-                    let prefix = song.code.startsWith('K') ? '風のひびき' : 'やすらぎの歌';
-                    let volume = song.code.replace(/^[KY]/, '');
+                masterData.allSongs = rawAllSongs.map(song => {
+                    let prefix = (song.code && song.code.startsWith('K')) ? '風のひびき' : 'やすらぎの歌';
+                    let volume = song.code ? song.code.replace(/^[KY]/, '') : '';
                     let textCategory = `${prefix} ${volume}集`;
                     categories.add(textCategory);
-                    return { category: textCategory, num: song.num, title: song.title, fullName: `${prefix} ${volume}集 ${song.num} ${song.title}` };
+                    return { category: textCategory, num: song.num || '', title: song.title || '', fullName: `${prefix} ${volume}集 ${song.num || ''} ${song.title || ''}` };
                 });
                 masterData.bookCategories = Array.from(categories).sort((a,b) => b.localeCompare(a, 'ja', {numeric: true}));
                 
@@ -254,7 +278,8 @@
             renderSingerDropdown(); renderSpecialTeamDropdown(); buildSpecialFilterDropdown(); initEventListeners();
         } catch(e) { 
             console.error(e);
-            alert("マスターデータの同期に失敗しました。"); 
+            // ★【フリーズガード③】エラー内容を画面上で一発特定できるよう詳細化
+            alert("マスターデータの同期に失敗しました。\n[詳細原因]: " + e.message + "\n\n※ブラウザを再読み込みするか、GAS側が正しくデプロイ更新されているかご確認ください。"); 
         }
     });
 
@@ -279,11 +304,12 @@
     function buildSpecialFilterDropdown() {
         const f = document.getElementById('book_filterSpecial');
         f.innerHTML = '<option value="">歌集・集数を選択</option>';
-        masterData.bookCategories.forEach(cat => { const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; f.appendChild(opt); });
+        if(masterData.bookCategories) {
+            masterData.bookCategories.forEach(cat => { const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; f.appendChild(opt); });
+        }
         const otherOpt = document.createElement('option'); otherOpt.value = "__MANUAL__"; otherOpt.textContent = "その他（直接手入力する）"; f.appendChild(otherOpt);
     }
 
-    // ★【改修】特別賛美は重複チェック（既に入力済み）から「完全対象外」化
     function filterSongsSpecial(defaultVal = "") {
         const filterVal = document.getElementById('book_filterSpecial').value;
         if (filterVal === '__MANUAL__') { showElement('specialSongSelect', false); showElement('specialSongManual', true); if(defaultVal) document.getElementById('specialSongManual').value = defaultVal; return; }
@@ -378,7 +404,6 @@
     function resetSelectionSection() { showElement('selectionSection', false); showElement('autoInfoBar', false); }
     function cleanSongName(name) { if(!name) return ""; return name.replace(/\(変更\)/g, "").replace(/\(オケ有\)/g, "").replace(/\(オケ無\)/g, "").replace(/\(選択済み\)/g, "").replace(/\(既に入力済み\)/g, "").trim(); }
 
-    // ★【新設コアロジック】シート登録済み曲 ➔ (既に入力済み)、フォーム内他ステップ選択曲 ➔ (選択済み) をリアルタイム反映する統括関数
     function updateAllSongOptions() {
         const currentSelectedValues = [];
         songInputKeys.forEach((key, idx) => {
@@ -388,7 +413,7 @@
             }
         });
 
-        const cleanBookedSongs = masterData.bookedSongs.map(s => cleanSongName(s));
+        const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
 
         songInputKeys.forEach((key, idx) => {
             const select = document.getElementById(`song_dyn${idx}`);
@@ -463,7 +488,9 @@
             }
 
             const f = document.getElementById(`book_filter_dyn${idx}`);
-            masterData.bookCategories.forEach(cat => { const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; f.appendChild(opt); });
+            if(masterData.bookCategories) {
+                masterData.bookCategories.forEach(cat => { const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; f.appendChild(opt); });
+            }
             if (isProphecy) setupProphecyDropdownDyn(idx);
             if (isFixed) setupFixedDropdownDyn(idx);
         });
@@ -473,7 +500,7 @@
         const select = document.getElementById(`song_dyn${idx}`); if (!select) return;
         select.innerHTML = '';
         
-        const cleanBookedSongs = masterData.bookedSongs.map(s => cleanSongName(s));
+        const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
         const isFixedBooked = cleanBookedSongs.includes(cleanSongName(FIXED_SONG));
 
         const fixedOpt = document.createElement('option'); fixedOpt.value = FIXED_SONG; fixedOpt.textContent = FIXED_SONG; 
@@ -504,7 +531,7 @@
         const select = document.getElementById(`song_dyn${idx}`); if (!select) return;
         select.innerHTML = '<option value="">曲を選択してください（前半賛美預言後）</option>';
         
-        const cleanBookedSongs = masterData.bookedSongs.map(s => cleanSongName(s));
+        const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
         const cleanDefault = cleanSongName(defaultVal);
         let isMatched = false;
 
@@ -541,7 +568,7 @@
         const targetSelect = document.getElementById(`song_dyn${idx}`);
         targetSelect.innerHTML = '<option value="">曲を選択してください</option>'; if (!filterVal) return;
         
-        const cleanBookedSongs = masterData.bookedSongs.map(s => cleanSongName(s));
+        const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
         const cleanDefault = cleanSongName(defaultVal);
 
         masterData.allSongs.filter(s => s.category === filterVal).forEach(song => {
