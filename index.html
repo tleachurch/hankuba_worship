@@ -515,6 +515,22 @@
     function resetSelectionSection() { showElement('selectionSection', false); showElement('autoInfoBar', false); }
     function cleanSongName(name) { if(!name) return ""; return name.replace(/\(変更\)/g, "").replace(/\(オケ有\)/g, "").replace(/\(オケ無\)/g, "").replace(/\(選択済み\)/g, "").replace(/\(既に入力済み\)/g, "").trim(); }
 
+    // 登録済み曲名の表記揺れ(タイトル差異・集数のゼロ埋め等)を吸収して全曲リストから同一曲を探す。
+    // 1) 完全一致 → 2) (歌集名, 集数, 番号)一致 の順で照合し、見つかった全曲側エントリを返す。
+    function findSongLoose(name) {
+        const clean = cleanSongName(name || '');
+        if (!clean) return null;
+        let m = masterData.allSongs.filter(s => s.fullName === clean)[0];
+        if (m) return m;
+        const mm = clean.match(/^(風のひびき|やすらぎの歌)\s*0*(\d+)集\s*(\S+)/);
+        if (mm) {
+            const cat = `${mm[1]} ${mm[2]}集`;
+            m = masterData.allSongs.filter(s => s.category === cat && String(s.num) === String(mm[3]))[0];
+            if (m) return m;
+        }
+        return null;
+    }
+
     function updateAllSongOptions() {
         const currentSelectedValues = [];
         songInputKeys.forEach((key, idx) => {
@@ -641,8 +657,8 @@
 
         if (defaultVal && !/god\s*is\s*working/i.test(defaultVal)) {
             showElement(`filter_area_dyn${idx}`, true); select.onchange = () => { updateAllSongOptions(); };
-            const matchCat = masterData.allSongs.filter(s => s.fullName === defaultVal)[0];
-            if (matchCat) { document.getElementById(`book_filter_dyn${idx}`).value = matchCat.category; filterDynSongs(idx, defaultVal); }
+            const matchCat = findSongLoose(defaultVal);
+            if (matchCat) { document.getElementById(`book_filter_dyn${idx}`).value = matchCat.category; filterDynSongs(idx, matchCat.fullName); }
         }
         updateAllSongOptions();
     }
@@ -653,13 +669,14 @@
         
         const cleanBookedSongs = (masterData.bookedSongs || []).map(s => cleanSongName(s));
         const cleanDefault = cleanSongName(defaultVal);
-        let isMatched = false;
+        let matchedValue = "";
 
         masterData.earlyProphecySongs.forEach(songFullName => {
             const isBooked = cleanBookedSongs.includes(cleanSongName(songFullName));
             const opt = document.createElement('option'); opt.value = songFullName; opt.textContent = songFullName;
             if (isBooked && cleanSongName(songFullName) !== cleanDefault) { opt.disabled = true; opt.textContent += " (既に入力済み)"; }
-            select.appendChild(opt); if (songFullName === defaultVal) isMatched = true;
+            select.appendChild(opt);
+            if (cleanDefault && cleanSongName(songFullName) === cleanDefault) matchedValue = songFullName;
         });
         const otherOpt = document.createElement('option'); otherOpt.value = "__OTHER__"; otherOpt.textContent = "その他（全曲一覧から検索する）"; select.appendChild(otherOpt);
 
@@ -673,11 +690,19 @@
         };
 
         if (defaultVal) {
-            if (isMatched) { select.value = defaultVal; }
+            // 表記揺れ・旧表記(集数のゼロ埋め等)でも(歌集,集数,番号)一致なら預言後リスト側の同一曲として復元
+            if (!matchedValue) {
+                const loose = findSongLoose(defaultVal);
+                if (loose) {
+                    matchedValue = masterData.earlyProphecySongs.filter(fn => fn === loose.fullName)[0] || "";
+                }
+            }
+            if (matchedValue) { select.value = matchedValue; }
             else {
+                // 預言後リストに存在しない曲(「その他」で全曲から選ばれた曲)のみ全曲モードで復元
                 showElement(`filter_area_dyn${idx}`, true); select.onchange = () => { updateAllSongOptions(); };
-                const matchCat = masterData.allSongs.filter(s => s.fullName === defaultVal)[0];
-                if (matchCat) { document.getElementById(`book_filter_dyn${idx}`).value = matchCat.category; filterDynSongs(idx, defaultVal); }
+                const matchCat = findSongLoose(defaultVal);
+                if (matchCat) { document.getElementById(`book_filter_dyn${idx}`).value = matchCat.category; filterDynSongs(idx, matchCat.fullName); }
             }
         }
         updateAllSongOptions();
@@ -750,8 +775,8 @@
                 else if (existSong.indexOf("(オケ無)") >= 0) document.querySelectorAll('input[name="okeType"]')[1].checked = true;
 
                 if (plainSong) {
-                    let matchCat = masterData.allSongs.filter(s => s.fullName === plainSong)[0];
-                    if (matchCat) { document.getElementById('book_filterSpecial').value = matchCat.category; filterSongsSpecial(plainSong); }
+                    let matchCat = findSongLoose(plainSong);
+                    if (matchCat) { document.getElementById('book_filterSpecial').value = matchCat.category; filterSongsSpecial(matchCat.fullName); }
                     else { document.getElementById('book_filterSpecial').value = "__MANUAL__"; filterSongsSpecial(plainSong); }
                 } else {
                     document.getElementById('book_filterSpecial').value = "";
@@ -783,8 +808,8 @@
                     } else if (key.indexOf('預言後') >= 0) {
                         setupProphecyDropdownDyn(idx, plainSong);
                     } else if (plainSong) {
-                        const matchCat = masterData.allSongs.filter(s => s.fullName === plainSong)[0];
-                        if (matchCat) { document.getElementById('book_filter_dyn' + idx).value = matchCat.category; filterDynSongs(idx, plainSong); }
+                        const matchCat = findSongLoose(plainSong);
+                        if (matchCat) { document.getElementById('book_filter_dyn' + idx).value = matchCat.category; filterDynSongs(idx, matchCat.fullName); }
                     }
                 });
                 updateAllSongOptions();
@@ -830,8 +855,8 @@
                 } else if (key.indexOf('預言後') >= 0) {
                     setupProphecyDropdownDyn(idx, plainSong);
                 } else if (plainSong) {
-                    const matchCat = masterData.allSongs.filter(s => s.fullName === plainSong)[0];
-                    if (matchCat) { document.getElementById('book_filter_dyn' + idx).value = matchCat.category; filterDynSongs(idx, plainSong); }
+                    const matchCat = findSongLoose(plainSong);
+                    if (matchCat) { document.getElementById('book_filter_dyn' + idx).value = matchCat.category; filterDynSongs(idx, matchCat.fullName); }
                 }
             });
             updateAllSongOptions();
